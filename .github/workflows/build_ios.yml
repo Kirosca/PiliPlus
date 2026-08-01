@@ -1,9 +1,9 @@
 name: 云端打包 iOS
 
 on:
-  workflow_dispatch: # 支持手动点击按钮触发
+  workflow_dispatch:
   push:
-    branches: [ main, master ] # 代码提交时触发
+    branches: [ main, master ]
 
 permissions:
   contents: write
@@ -11,19 +11,13 @@ permissions:
 jobs:
   ios:
     name: 打包 iOS IPA
-    runs-on: macos-latest # 打包 iOS 必须在苹果 Mac 云端服务器上运行
+    runs-on: macos-latest
 
     steps:
       - name: 代码迁出
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: 构建 Java 环境
-        uses: actions/setup-java@v4
-        with:
-          distribution: "zulu"
-          java-version: "17"
 
       - name: 安装对应版本的 Flutter
         uses: subosito/flutter-action@v2
@@ -32,26 +26,27 @@ jobs:
           flutter-version-file: pubspec.yaml
           cache: true
 
-      - name: 应用 PiliPlus iOS 框架补丁
-        shell: pwsh
-        run: lib/scripts/patch.ps1 ios
-
       - name: 生成版本信息与编译配置文件
         shell: pwsh
-        run: lib/scripts/build.ps1 ios
+        run: lib/scripts/build.ps1
 
-      - name: 安装项目依赖
-        run: flutter pub get
+      - name: 应用 PiliPlus iOS 框架补丁
+        shell: pwsh
+        run: lib/scripts/patch.ps1 iOS
 
-      - name: 打包 release IPA (无签名包)
-        run: flutter build ipa --no-codesign --dart-define-from-file=pili_release.json --pub
+      - name: 打包 iOS IPA (含自签证书修补)
+        run: |
+          flutter build ios --release --no-codesign --dart-define-from-file=pili_release.json
+          ln -sf ./build/ios/iphoneos Payload
+          find Payload/Runner.app/Frameworks -type d -name "*.framework" -exec codesign --force --sign - --preserve-metadata=identifier,entitlements {} \;
+          zip -r9 PiliPlus_ios.ipa Payload/Runner.app
 
       - name: 自动合并发布到同一个 Release 页面
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.1.0-title-filter # 注意：与安卓使用相同的 tag_name，即可自动合并！
+          tag_name: v2.1.0-title-filter
           name: "PiliPlus v2.1.0 标题筛选定制版"
           body: "本版本增加了视频标题关键词严格筛选功能。"
           draft: false
           prerelease: false
-          files: build/ios/ipa/*.ipa
+          files: PiliPlus_ios.ipa
