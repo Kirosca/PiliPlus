@@ -1,9 +1,12 @@
 name: 云端自动打包 APK
 
 on:
-  workflow_dispatch: # 支持手动点击按钮触发打包
+  workflow_dispatch:
   push:
     branches: [ main, master ]
+
+permissions:
+  contents: write
 
 jobs:
   android:
@@ -41,10 +44,14 @@ jobs:
         run: flutter pub get
 
       - name: 打包 release APK
-        run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --pub
+        run: flutter build apk --release --dart-define-from-file=pili_release.json --pub
 
-      - name: 上传 APK 供下载
-        uses: actions/upload-artifact@v4
+      - name: 自动发布到 Releases (任何人免登录直接下载)
+        uses: softprops/action-gh-release@v2
         with:
-          name: PiliPlus-标题筛选版-APK
-          path: build/app/outputs/flutter-apk/*.apk
+          tag_name: v2.1.0-title-filter
+          name: "PiliPlus v2.1.0 标题筛选定制版"
+          body: "本版本增加了视频标题关键词严格筛选功能。"
+          draft: false
+          prerelease: false
+          files: build/app/outputs/flutter-apk/*.apk
