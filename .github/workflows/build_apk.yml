@@ -44,7 +44,7 @@ jobs:
         run: flutter pub get
 
       - name: 打包 release APK
-        run: flutter build apk --release --dart-define-from-file=pili_release.json --pub
+        run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --pub
 
       - name: 自动发布到 Releases (任何人免登录直接下载)
         uses: softprops/action-gh-release@v2
