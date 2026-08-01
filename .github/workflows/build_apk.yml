@@ -29,15 +29,19 @@ jobs:
           flutter-version-file: pubspec.yaml
           cache: true
 
-      - name: 应用 PiliPlus 框架补丁 (关键步骤)
+      - name: 应用 PiliPlus 框架补丁
         shell: pwsh
         run: lib/scripts/patch.ps1 android
+
+      - name: 生成版本信息与编译配置文件
+        shell: pwsh
+        run: lib/scripts/build.ps1 android
 
       - name: 安装项目依赖
         run: flutter pub get
 
       - name: 打包 release APK
-        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
+        run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --pub
 
       - name: 上传 APK 供下载
         uses: actions/upload-artifact@v4
