@@ -24,6 +24,8 @@ class SearchVideoController
 
   late bool hasJump2Video = false;
 
+  final RxBool titleMatchOnly = true.obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -38,7 +40,18 @@ class SearchVideoController
 
   @override
   List<SearchVideoItemModel>? getDataList(SearchVideoData response) {
-    return response.list;
+    final list = response.list;
+    if (list == null || list.isEmpty || !titleMatchOnly.value) return list;
+
+    final cleanKeyword = keyword.trim().toLowerCase();
+    if (cleanKeyword.isEmpty) return list;
+
+    final keywords = cleanKeyword.split(RegExp(r'\s+'));
+
+    return list.where((item) {
+      final videoTitle = (item.title ?? '').toLowerCase();
+      return keywords.every((k) => videoTitle.contains(k));
+    }).toList();
   }
 
   @override
@@ -164,6 +177,23 @@ class SearchVideoController
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('仅匹配标题关键词', style: TextStyle(fontSize: 16)),
+                    Obx(
+                      () => Switch(
+                        value: titleMatchOnly.value,
+                        onChanged: (val) {
+                          titleMatchOnly.value = val;
+                          onSortSearch(getBack: false);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(),
                 const SizedBox(height: 10),
                 const Text('发布时间', style: TextStyle(fontSize: 16)),
                 const SizedBox(height: 10),
