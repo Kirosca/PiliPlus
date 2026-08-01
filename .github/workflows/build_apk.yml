@@ -6,33 +6,41 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
+  android:
+    name: 打包 Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: 拉取源码
+      - name: 代码迁出
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: 配置 Java 环境
+      - name: 构建 Java 环境
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "zulu"
+          java-version: "17"
 
-      - name: 配置 Flutter 环境
+      - name: 安装对应版本的 Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
 
-      - name: 安装依赖
+      - name: 应用 PiliPlus 框架补丁 (关键步骤)
+        shell: pwsh
+        run: lib/scripts/patch.ps1 android
+
+      - name: 安装项目依赖
         run: flutter pub get
 
       - name: 打包 release APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
 
       - name: 上传 APK 供下载
         uses: actions/upload-artifact@v4
         with:
           name: PiliPlus-标题筛选版-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/*.apk
