@@ -195,6 +195,12 @@ abstract final class Pref {
         defaultValue: UpPanelPosition.leftFixed.index,
       )];
 
+  static bool get hideHomeMsgIcon =>
+      _setting.get(SettingBoxKey.hideHomeMsgIcon, defaultValue: false);
+
+  static set hideHomeMsgIcon(bool value) =>
+      _setting.put(SettingBoxKey.hideHomeMsgIcon, value);
+
   static FullScreenMode get fullScreenMode {
     int? index = _setting.get(SettingBoxKey.fullScreenMode);
     if (index == null) {

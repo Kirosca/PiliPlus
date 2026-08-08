@@ -98,8 +98,17 @@ class _HomePageState extends CommonPageState<HomePage>
     final child = Row(
       children: [
         searchBar(),
-        const SizedBox(width: 4),
-        msgBadge(_mainController),
+        Obx(
+          () => _mainController.hideHomeMsgIcon.value
+              ? const SizedBox.shrink()
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: 4),
+                    msgBadge(_mainController),
+                  ],
+                ),
+        ),
         const SizedBox(width: 8),
         userAvatar(colorScheme: _colorScheme, mainController: _mainController),
       ],

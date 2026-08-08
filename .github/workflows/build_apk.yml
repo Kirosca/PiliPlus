@@ -1,9 +1,16 @@
-name: 云端自动打包 APK
+name: 云端打包 APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main, master ]
+    inputs:
+      publish_release:
+        type: boolean
+        description: '勾选此项直接发布到 Release；不勾选则仅生成测试 APK 供自己下载试用'
+        default: false
+      release_note:
+        description: '本次发布的更新日志（仅当勾选发布时生效）'
+        required: false
+        default: '修复已知问题，优化使用体验。'
 
 permissions:
   contents: write
@@ -44,14 +51,22 @@ jobs:
         run: flutter pub get
 
       - name: 打包 release APK
-        run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --pub
+        run: flutter build apk --release --dart-define-from-file=pili_release.json --pub
 
-      - name: 自动发布到 Releases (任何人免登录直接下载)
+      - name: 上传测试安装包 (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PiliPlus-Test-APK
+          path: build/app/outputs/flutter-apk/*.apk
+
+      - name: 发布到 Releases 页面
+        if: ${{ inputs.publish_release }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.1.0-title-filter
-          name: "PiliPlus v2.1.0 标题筛选定制版"
-          body: "本版本增加了视频标题关键词严格筛选功能。"
+          tag_name: "v2.1.0-build-${{ github.run_number }}"
+          name: "PiliPlus v2.1.0 标题筛选版 (第 ${{ github.run_number }} 次构建)"
+          body: "${{ inputs.release_note }}"
+          generate_release_notes: true
           draft: false
           prerelease: false
           files: build/app/outputs/flutter-apk/*.apk

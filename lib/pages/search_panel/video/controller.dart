@@ -43,14 +43,9 @@ class SearchVideoController
     final list = response.list;
     if (list == null || list.isEmpty || !titleMatchOnly.value) return list;
 
-    final cleanKeyword = keyword.trim().toLowerCase();
-    if (cleanKeyword.isEmpty) return list;
-
-    final keywords = cleanKeyword.split(RegExp(r'\s+'));
-
+    // 仅保留标题中包含 B 站官方关键词高亮 (isEm == true) 的视频
     return list.where((item) {
-      final videoTitle = (item.title ?? '').toLowerCase();
-      return keywords.every((k) => videoTitle.contains(k));
+      return item.titleList?.any((e) => e.isEm) ?? false;
     }).toList();
   }
 

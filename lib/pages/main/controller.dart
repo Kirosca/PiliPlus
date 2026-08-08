@@ -53,6 +53,7 @@ class MainController extends GetxController
   late Set<MsgUnReadType> msgUnReadTypes = Pref.msgUnReadTypeV2;
   late final RxString msgUnReadCount = ''.obs;
   late int lastCheckUnreadAt = 0;
+  late final RxBool hideHomeMsgIcon = Pref.hideHomeMsgIcon.obs;
 
   final enableMYBar = Pref.enableMYBar;
   final floatingNavBar = Pref.floatingNavBar;

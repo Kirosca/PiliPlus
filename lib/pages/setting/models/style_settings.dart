@@ -197,6 +197,16 @@ List<SettingsModel> get styleSettings => [
     getSubtitle: () =>
         '当前消息类型：${Pref.msgUnReadTypeV2.map((item) => item.title).join('、')}',
   ),
+  SwitchModel(
+    title: '隐藏首页消息图标',
+    subtitle: '隐藏顶部搜索栏右侧的消息图标',
+    leading: const Icon(MdiIcons.bellOffOutline),
+    setKey: SettingBoxKey.hideHomeMsgIcon,
+    defaultVal: false,
+    onChanged: (value) {
+      Get.find<MainController>().hideHomeMsgIcon.value = value;
+    },
+  ),
   NormalModel(
     onTap: _showBarHideTypeDialog,
     title: '顶/底栏收起类型',
