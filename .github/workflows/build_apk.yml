@@ -58,7 +58,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ github.ref_name }}"
-          name: "${{ github.ref_name }}"
+          name: "PiliPlus ${{ github.ref_name }} 标题筛选定制版"
           generate_release_notes: true
           draft: false
           prerelease: false
