@@ -59,7 +59,6 @@ jobs:
         with:
           tag_name: "${{ github.ref_name }}"
           name: "PiliPlus ${{ github.ref_name }} 标题筛选定制版"
-          body: "⚙️ 新增【隐藏首页消息图标】设置开关（位置：设置 ➔ 外观设置 ➔ 隐藏首页消息图标），开启即时生效，支持配置文件的导入导出与备份。"
           generate_release_notes: true
           draft: false
           prerelease: false
