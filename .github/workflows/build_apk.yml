@@ -1,16 +1,10 @@
 name: 云端打包 APK
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
-    inputs:
-      publish_release:
-        type: boolean
-        description: '勾选此项直接发布到 Release；不勾选则仅生成测试 APK 供自己下载试用'
-        default: false
-      release_note:
-        description: '本次发布的更新日志（仅当勾选发布时生效）'
-        required: false
-        default: '修复已知问题，优化使用体验。'
 
 permissions:
   contents: write
@@ -59,13 +53,12 @@ jobs:
           name: PiliPlus-Test-APK
           path: build/app/outputs/flutter-apk/*.apk
 
-      - name: 发布到 Releases 页面
-        if: ${{ inputs.publish_release }}
+      - name: 发布到 Releases 页面 (推标签时触发)
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v2.1.0-build-${{ github.run_number }}"
-          name: "PiliPlus v2.1.0 标题筛选版 (第 ${{ github.run_number }} 次构建)"
-          body: "${{ inputs.release_note }}"
+          tag_name: "${{ github.ref_name }}"
+          name: "${{ github.ref_name }}"
           generate_release_notes: true
           draft: false
           prerelease: false
