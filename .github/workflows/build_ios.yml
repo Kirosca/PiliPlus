@@ -2,8 +2,15 @@ name: 云端打包 iOS
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main, master ]
+    inputs:
+      publish_release:
+        type: boolean
+        description: '勾选此项直接发布到 Release；不勾选则仅生成测试 IPA 供自己下载试用'
+        default: false
+      release_note:
+        description: '本次发布的更新日志（仅当勾选发布时生效）'
+        required: false
+        default: '修复已知问题，优化使用体验。'
 
 permissions:
   contents: write
@@ -19,6 +26,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 构建 Java 环境
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
       - name: 安装对应版本的 Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -26,27 +39,41 @@ jobs:
           flutter-version-file: pubspec.yaml
           cache: true
 
+      - name: 应用 PiliPlus 框架补丁
+        shell: pwsh
+        run: lib/scripts/patch.ps1 iOS
+
       - name: 生成版本信息与编译配置文件
         shell: pwsh
         run: lib/scripts/build.ps1
 
-      - name: 应用 PiliPlus iOS 框架补丁
-        shell: pwsh
-        run: lib/scripts/patch.ps1 iOS
+      - name: 安装项目依赖
+        run: flutter pub get
 
-      - name: 打包 iOS IPA (含自签证书修补)
+      - name: 打包 release iOS
+        run: flutter build ios --release --no-codesign --dart-define-from-file=pili_release.json --pub
+
+      - name: 生成 IPA 安装包文件
         run: |
-          flutter build ios --release --no-codesign --dart-define-from-file=pili_release.json
-          ln -sf ./build/ios/iphoneos Payload
-          find Payload/Runner.app/Frameworks -type d -name "*.framework" -exec codesign --force --sign - --preserve-metadata=identifier,entitlements {} \;
-          zip -r9 PiliPlus_ios.ipa Payload/Runner.app
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          find Payload/Runner.app/Frameworks -type d -name "*.framework" -exec codesign --force --sign - --preserve-metadata=identifier,entitlements {} \; 2>/dev/null || true
+          zip -r9 PiliPlus_ios.ipa Payload/
 
-      - name: 自动合并发布到同一个 Release 页面
+      - name: 上传测试安装包 (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PiliPlus-Test-IPA
+          path: PiliPlus_ios.ipa
+
+      - name: 发布到 Releases 页面
+        if: ${{ inputs.publish_release }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.1.0-title-filter
-          name: "PiliPlus v2.1.0 标题筛选定制版"
-          body: "本版本增加了视频标题关键词严格筛选功能。"
+          tag_name: "v2.1.0-build-${{ github.run_number }}"
+          name: "PiliPlus v2.1.0 标题筛选版 (第 ${{ github.run_number }} 次构建)"
+          body: "${{ inputs.release_note }}"
+          generate_release_notes: true
           draft: false
           prerelease: false
           files: PiliPlus_ios.ipa
