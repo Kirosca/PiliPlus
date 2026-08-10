@@ -44,20 +44,8 @@ jobs:
       - name: 安装项目依赖
         run: flutter pub get
 
-      - name: 打包 release APK
+      - name: 打包 release APK (自动加载固定 key.properties 签名)
         run: flutter build apk --release --dart-define-from-file=pili_release.json --pub
-
-      - name: 固定密钥签名 APK (支持以后一键覆盖升级免卸载)
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          ALIAS: ${{ secrets.ALIAS }}
-        if: ${{ env.SIGNING_KEY != '' }}
-        run: |
-          python3 -c "import base64, os; s = os.environ['SIGNING_KEY'].strip(); s += '=' * ((4 - len(s) % 4) % 4); open('release.keystore', 'wb').write(base64.b64decode(s))"
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore release.keystore -storepass "$KEY_STORE_PASSWORD" -keypass "$KEY_PASSWORD" build/app/outputs/flutter-apk/app-release.apk "$ALIAS"
-          rm -f release.keystore
 
       - name: 上传测试安装包 (Artifacts)
         uses: actions/upload-artifact@v4
