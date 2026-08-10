@@ -68,11 +68,13 @@ class SearchVideoController
           ? item.bvid
           : (item.aid != null && item.aid != 0)
               ? item.aid.toString()
-              : (item.param != null && item.param!.isNotEmpty)
-                  ? item.param
-                  : (item.id != null && item.id != 0)
-                      ? item.id.toString()
-                      : null;
+              : (item.seasonId != null && item.seasonId != 0)
+                  ? 'season_${item.seasonId}'
+                  : (item.roomId != null && item.roomId != 0)
+                      ? 'room_${item.roomId}'
+                      : (item.id != null && item.id != 0)
+                          ? item.id.toString()
+                          : null;
 
       if (idKey != null && idKey.isNotEmpty) {
         if (_seenVideoIds.contains(idKey)) {
