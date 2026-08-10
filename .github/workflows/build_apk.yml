@@ -48,7 +48,9 @@ jobs:
         run: flutter build apk --release --dart-define-from-file=pili_release.json --pub
 
       - name: 固定密钥签名 APK (支持以后一键覆盖升级免卸载)
-        if: ${{ secrets.SIGNING_KEY != '' }}
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        if: ${{ env.SIGNING_KEY != '' }}
         uses: rtrace/android-sign-action@v1
         id: sign_app
         with:
