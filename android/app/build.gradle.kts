@@ -43,9 +43,10 @@ android {
             it.load(properties.inputStream())
     }
 
-    val config = keyProperties.getProperty("storeFile")?.let {
+    val config = keyProperties.getProperty("storeFile")?.let { storeFilePath ->
+        val keystoreFile = if (file(storeFilePath).exists()) file(storeFilePath) else rootProject.file(storeFilePath.removePrefix("../"))
         signingConfigs.create("release") {
-            storeFile = file(it)
+            storeFile = keystoreFile
             storePassword = keyProperties.getProperty("storePassword")
             keyAlias = keyProperties.getProperty("keyAlias")
             keyPassword = keyProperties.getProperty("keyPassword")
@@ -61,10 +62,8 @@ android {
     }
 
     buildTypes {
-        all {
-            signingConfig = config ?: signingConfigs["debug"]
-        }
-        release {
+        getByName("release") {
+            signingConfig = config ?: throw GradleException("Release signing config is missing!")
             if (project.hasProperty("dev")) {
                 applicationIdSuffix = ".dev"
                 resValue(
