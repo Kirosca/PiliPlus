@@ -47,6 +47,7 @@ class SearchVideoController
 
     if (page == 1) {
       _seenVideoIds.clear();
+      _consecutiveEmptyCount = 0;
     }
 
     final cleanKeyword = keyword.trim().toLowerCase();
@@ -73,12 +74,17 @@ class SearchVideoController
       return true;
     }).toList();
 
-    if (filteredList.isEmpty && list.isNotEmpty && !isEnd) {
-      Future.microtask(() {
-        if (!isLoading && !isEnd) {
-          queryData(false);
-        }
-      });
+    if (filteredList.isNotEmpty) {
+      _consecutiveEmptyCount = 0;
+    } else if (list.isNotEmpty && !isEnd) {
+      _consecutiveEmptyCount++;
+      if (_consecutiveEmptyCount < 5) {
+        Future.microtask(() {
+          if (!isLoading && !isEnd) {
+            queryData(false);
+          }
+        });
+      }
     }
 
     return filteredList;
