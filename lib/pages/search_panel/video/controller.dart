@@ -27,6 +27,7 @@ class SearchVideoController
   final RxBool titleMatchOnly = true.obs;
 
   final Set<String> _seenVideoIds = <String>{};
+  int _consecutiveEmptyCount = 0;
 
   @override
   void onInit() {
