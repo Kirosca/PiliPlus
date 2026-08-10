@@ -63,33 +63,6 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的纯正向搜索词
-  String get cleanSearchKeyword {
-    final rawList = keyword.trim().split(RegExp(r'\s+'));
-    final positiveWords =
-        rawList.where((k) => !k.startsWith('-') || k.length <= 1);
-    final result = positiveWords.join(' ');
-    return result.isEmpty ? keyword : result;
-  }
-
-  @override
-  Future<LoadingState<SearchVideoData>> customGetData() =>
-      SearchHttp.searchByType<SearchVideoData>(
-        searchType: searchType,
-        keyword: cleanSearchKeyword,
-        page: page,
-        order: order,
-        duration: videoDurationType?.index,
-        tids: videoZoneType?.tids,
-        pubBegin: pubBegin,
-        pubEnd: pubEnd,
-        gaiaVtoken: gaiaVtoken,
-        onSuccess: (String gaiaVtoken) {
-          this.gaiaVtoken = gaiaVtoken;
-          queryData(page == 1);
-        },
-      );
-
   @override
   List<SearchVideoItemModel>? getDataList(SearchVideoData response) {
     final list = response.list;
@@ -100,32 +73,15 @@ class SearchVideoController
       _consecutiveEmptyCount = 0;
     }
 
-    final rawKeywords =
-        keyword.trim().toLowerCase().split(RegExp(r'\s+'));
-    final includeKeywords = <String>[];
-    final excludeKeywords = <String>[];
-
-    for (final k in rawKeywords) {
-      if (k.startsWith('-') && k.length > 1) {
-        excludeKeywords.add(k.substring(1));
-      } else if (k.isNotEmpty) {
-        includeKeywords.add(k);
-      }
-    }
+    final cleanKeyword = keyword.trim().toLowerCase();
+    final keywords = cleanKeyword.isEmpty
+        ? <String>[]
+        : cleanKeyword.split(RegExp(r'\s+'));
 
     final filteredList = list.where((item) {
-      if (titleMatchOnly.value) {
+      if (titleMatchOnly.value && keywords.isNotEmpty) {
         final videoTitle = (item.title ?? '').toLowerCase();
-
-        // 1. 正向多词全匹配：必须包含所有的必含词
-        if (includeKeywords.isNotEmpty &&
-            !includeKeywords.every((k) => videoTitle.contains(k))) {
-          return false;
-        }
-
-        // 2. 负向排除词过滤：包含任意一个排除词则强行剔除
-        if (excludeKeywords.isNotEmpty &&
-            excludeKeywords.any((k) => videoTitle.contains(k))) {
+        if (!keywords.every((k) => videoTitle.contains(k))) {
           return false;
         }
       }
