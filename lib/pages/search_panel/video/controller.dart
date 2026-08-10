@@ -70,9 +70,9 @@ class SearchVideoController
               ? item.aid.toString()
               : (item.param != null && item.param!.isNotEmpty)
                   ? item.param
-                  : (item.title != null && item.title!.isNotEmpty)
-                      ? '${item.title}_${item.owner?.name ?? item.pubdate ?? ""}'
-                      : item.id?.toString();
+                  : (item.id != null && item.id != 0)
+                      ? item.id.toString()
+                      : null;
 
       if (idKey != null && idKey.isNotEmpty) {
         if (_seenVideoIds.contains(idKey)) {
