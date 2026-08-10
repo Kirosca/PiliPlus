@@ -50,16 +50,14 @@ jobs:
       - name: 固定密钥签名 APK (支持以后一键覆盖升级免卸载)
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ALIAS: ${{ secrets.ALIAS }}
         if: ${{ env.SIGNING_KEY != '' }}
-        uses: rtrace/android-sign-action@v1
-        id: sign_app
-        with:
-          releaseDirectory: build/app/outputs/flutter-apk
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        continue-on-error: true
+        run: |
+          echo "$SIGNING_KEY" | base64 -d > release.keystore
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore release.keystore -storepass "$KEY_STORE_PASSWORD" -keypass "$KEY_PASSWORD" build/app/outputs/flutter-apk/app-release.apk "$ALIAS"
+          rm -f release.keystore
 
       - name: 上传测试安装包 (Artifacts)
         uses: actions/upload-artifact@v4
