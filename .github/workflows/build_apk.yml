@@ -55,7 +55,7 @@ jobs:
           ALIAS: ${{ secrets.ALIAS }}
         if: ${{ env.SIGNING_KEY != '' }}
         run: |
-          echo "$SIGNING_KEY" | base64 -d > release.keystore
+          echo "$SIGNING_KEY" | tr -d '\r\n ' | base64 -d > release.keystore
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore release.keystore -storepass "$KEY_STORE_PASSWORD" -keypass "$KEY_PASSWORD" build/app/outputs/flutter-apk/app-release.apk "$ALIAS"
           rm -f release.keystore
 
