@@ -47,6 +47,18 @@ jobs:
       - name: 打包 release APK
         run: flutter build apk --release --dart-define-from-file=pili_release.json --pub
 
+      - name: 固定密钥签名 APK (支持以后一键覆盖升级免卸载)
+        if: ${{ secrets.SIGNING_KEY != '' }}
+        uses: rtrace/android-sign-action@v1
+        id: sign_app
+        with:
+          releaseDirectory: build/app/outputs/flutter-apk
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        continue-on-error: true
+
       - name: 上传测试安装包 (Artifacts)
         uses: actions/upload-artifact@v4
         with:
