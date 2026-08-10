@@ -28,6 +28,7 @@ class SearchVideoController
 
   final Set<String> _seenVideoIds = <String>{};
   int _consecutiveEmptyCount = 0;
+  int _autoFetchRetryCount = 0;
 
   @override
   void onInit() {
@@ -39,6 +40,26 @@ class SearchVideoController
     pubEndDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
     jump2Video();
+  }
+
+  @override
+  Future<void> queryData([bool isRefresh = true]) async {
+    if (isRefresh) {
+      _autoFetchRetryCount = 0;
+    }
+    await super.queryData(isRefresh);
+
+    if (!isRefresh &&
+        loadingState.value is Error &&
+        _consecutiveEmptyCount > 0 &&
+        _autoFetchRetryCount < 1) {
+      _autoFetchRetryCount++;
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!isLoading && !isEnd) {
+          queryData(false);
+        }
+      });
+    }
   }
 
   @override
