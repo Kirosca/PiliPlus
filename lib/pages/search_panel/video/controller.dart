@@ -64,7 +64,16 @@ class SearchVideoController
         }
       }
 
-      final idKey = item.bvid ?? item.aid?.toString() ?? item.id?.toString();
+      final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
+          ? item.bvid
+          : (item.aid != null && item.aid != 0)
+              ? item.aid.toString()
+              : (item.param != null && item.param!.isNotEmpty)
+                  ? item.param
+                  : (item.title != null && item.title!.isNotEmpty)
+                      ? item.title
+                      : item.id?.toString();
+
       if (idKey != null && idKey.isNotEmpty) {
         if (_seenVideoIds.contains(idKey)) {
           return false;
