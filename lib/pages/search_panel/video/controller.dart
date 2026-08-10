@@ -71,7 +71,7 @@ class SearchVideoController
               : (item.param != null && item.param!.isNotEmpty)
                   ? item.param
                   : (item.title != null && item.title!.isNotEmpty)
-                      ? item.title
+                      ? '${item.title}_${item.owner?.name ?? item.pubdate ?? ""}'
                       : item.id?.toString();
 
       if (idKey != null && idKey.isNotEmpty) {
