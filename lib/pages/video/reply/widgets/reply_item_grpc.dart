@@ -7,11 +7,12 @@ import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
-import 'package:PiliPlus/common/widgets/flutter/text/text.dart' as custom_text;
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart';
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
+import 'package:PiliPlus/common/widgets/text_ellipsis/text_ellipsis.dart';
+import 'package:PiliPlus/common/widgets/text_more/text_more.dart';
 import 'package:PiliPlus/common/widgets/translucent_row.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo, ReplyControl, Content, Url, ReplyControl_VoteOption, Emote;
@@ -338,7 +339,7 @@ class ReplyItemGrpc extends StatelessWidget {
           ),
         Padding(
           padding: padding,
-          child: custom_text.Text.rich(
+          child: TextMore.rich(
             primary: colorScheme.primary,
             style: const TextStyle(height: 1.75, fontSize: 14),
             maxLines: replyLevel == 1 ? replyLengthLimit : null,
@@ -616,7 +617,7 @@ class ReplyItemGrpc extends StatelessWidget {
                   onSecondaryTap: PlatformUtils.isMobile ? null : showMore,
                   child: Padding(
                     padding: padding,
-                    child: Text.rich(
+                    child: TextEllipsis.rich(
                       style: TextStyle(
                         height: 1.6,
                         fontSize: 14,

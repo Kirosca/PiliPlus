@@ -153,37 +153,40 @@ class _WhisperSettingsPageState extends State<WhisperSettingsPage> {
     ThemeData theme,
     LoadingState<PbMap<int, Setting>> loadingState,
   ) {
-    late final divider = Divider(
-      height: 1,
-      color: theme.colorScheme.outline.withValues(alpha: 0.1),
-    );
-    return switch (loadingState) {
-      Loading() => const SizedBox.shrink(),
-      Success<PbMap<int, Setting>>(:final response) => Builder(
-        builder: (context) {
-          final keys = response.keys.toList()..sort();
-          return ListView.separated(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.viewPaddingOf(context).bottom + 100,
-            ),
-            itemCount: keys.length,
-            itemBuilder: (context, index) {
-              final key = keys[index];
-              final item = response[key]!;
-              return ImSettingsItem(
-                item: item,
-                onSet: () => onSet(key, response, item),
-                onRedirect: () => onRedirect(theme, key, response, item),
-              );
-            },
-            separatorBuilder: (context, index) => divider,
-          );
-        },
-      ),
-      Error(:final errMsg) => scrollErrorWidget(
-        errMsg: errMsg,
-        onReload: _controller.onReload,
-      ),
-    };
+    switch (loadingState) {
+      case Loading():
+        return const SizedBox.shrink();
+      case Success<PbMap<int, Setting>>(:final response):
+        final divider = Divider(
+          height: 1,
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        );
+        return Builder(
+          builder: (context) {
+            final keys = response.keys.toList()..sort();
+            return ListView.separated(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewPaddingOf(context).bottom + 100,
+              ),
+              itemCount: keys.length,
+              itemBuilder: (context, index) {
+                final key = keys[index];
+                final item = response[key]!;
+                return ImSettingsItem(
+                  item: item,
+                  onSet: () => onSet(key, response, item),
+                  onRedirect: () => onRedirect(theme, key, response, item),
+                );
+              },
+              separatorBuilder: (context, index) => divider,
+            );
+          },
+        );
+      case Error(:final errMsg):
+        return scrollErrorWidget(
+          errMsg: errMsg,
+          onReload: _controller.onReload,
+        );
+    }
   }
 }

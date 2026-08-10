@@ -209,8 +209,7 @@ class _AudioPageState extends State<AudioPage> {
           maxWidth: min(640, context.mediaQueryShortestSide),
         ),
         builder: (context) {
-          final theme = Theme.of(context);
-          final colorScheme = theme.colorScheme;
+          final colorScheme = ColorScheme.of(context);
           Widget child = CustomScrollView(
             controller: scrollController,
             physics: _controller.reachStart
@@ -237,7 +236,6 @@ class _AudioPageState extends State<AudioPage> {
                         initiallyExpanded: isCurr,
                         collapsedIconColor: isCurr ? colorScheme.primary : null,
                         iconColor: isCurr ? null : colorScheme.onSurfaceVariant,
-                        controlAffinity: ListTileControlAffinity.leading,
                         title: Text(
                           item.arc.title,
                           maxLines: 1,
@@ -418,11 +416,8 @@ class _AudioPageState extends State<AudioPage> {
                 ),
                 Expanded(
                   child: Material(
-                    type: MaterialType.transparency,
-                    child: Theme(
-                      data: theme.copyWith(dividerColor: Colors.transparent),
-                      child: child,
-                    ),
+                    type: .transparency,
+                    child: child,
                   ),
                 ),
                 Divider(

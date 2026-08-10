@@ -192,44 +192,44 @@ class _PostPanelState extends State<PostPanel>
   @override
   Widget buildPage(ThemeData theme) {
     return SimpleScaffold(
-      appBar: AppBar(
-        primary: false,
-        toolbarHeight: 45,
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: const Text('提交片段'),
-        actions: [
-          iconButton(
-            size: 32,
-            context: context,
-            tooltip: '添加片段',
-            onPressed: () {
-              setState(() {
-                list.insert(
-                  0,
-                  PostSegmentModel(
-                    segment: Pair(
-                      first: 0,
-                      second: currentPos(),
+      appBar: SizedBox(
+        height: 45,
+        child: Row(
+          children: [
+            const SizedBox(width: 16),
+            const Expanded(child: Text('提交片段', style: TextStyle(fontSize: 16))),
+            iconButton(
+              size: 32,
+              context: context,
+              tooltip: '添加片段',
+              onPressed: () {
+                setState(() {
+                  list.insert(
+                    0,
+                    PostSegmentModel(
+                      segment: Pair(
+                        first: 0,
+                        second: currentPos(),
+                      ),
+                      category: SegmentType.sponsor,
+                      actionType: ActionType.skip,
                     ),
-                    category: SegmentType.sponsor,
-                    actionType: ActionType.skip,
-                  ),
-                );
-              });
-            },
-            icon: const Icon(Icons.add),
-          ),
-          const SizedBox(width: 10),
-          iconButton(
-            size: 32,
-            context: context,
-            tooltip: '关闭',
-            onPressed: Get.back,
-            icon: const Icon(Icons.close),
-          ),
-          const SizedBox(width: 16),
-        ],
+                  );
+                });
+              },
+              icon: const Icon(Icons.add),
+            ),
+            const SizedBox(width: 10),
+            iconButton(
+              size: 32,
+              context: context,
+              tooltip: '关闭',
+              onPressed: Get.back,
+              icon: const Icon(Icons.close),
+            ),
+            const SizedBox(width: 16),
+          ],
+        ),
       ),
       body: enableSlide ? slideList(theme) : buildList(theme),
       fab: list.isEmpty

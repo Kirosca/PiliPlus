@@ -19,11 +19,11 @@ class BottomSheet_ extends BottomSheet {
 }
 
 class _MiniBottomSheetState extends BottomSheetState {
-  VerticalDragGestureRecognizer? _verticalDragGestureRecognizer;
+  _VerticalDragGestureRecognizer? _verticalDragGestureRecognizer;
 
-  VerticalDragGestureRecognizer get verticalDragGestureRecognizer =>
+  _VerticalDragGestureRecognizer get verticalDragGestureRecognizer =>
       _verticalDragGestureRecognizer ??=
-          VerticalDragGestureRecognizer(debugOwner: this)
+          _VerticalDragGestureRecognizer(debugOwner: this)
             ..onStart = handleDragStart
             ..onUpdate = handleDragUpdate
             ..onEnd = handleDragEnd
@@ -74,5 +74,15 @@ class _MiniBottomSheetState extends BottomSheetState {
     }
 
     return bottomSheet;
+  }
+}
+
+class _VerticalDragGestureRecognizer extends VerticalDragGestureRecognizer {
+  _VerticalDragGestureRecognizer({super.debugOwner});
+
+  @override
+  bool isPointerAllowed(PointerEvent event) {
+    return event.localPosition.dy < 45 &&
+        super.isPointerAllowed(event as PointerDownEvent);
   }
 }

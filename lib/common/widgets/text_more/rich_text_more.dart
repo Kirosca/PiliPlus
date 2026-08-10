@@ -1,4 +1,4 @@
-import 'package:PiliPlus/common/widgets/more_text/paragraph_more.dart';
+import 'package:PiliPlus/common/widgets/text_more/paragraph_more.dart';
 import 'package:flutter/material.dart';
 
 class RichTextMore extends RichText {

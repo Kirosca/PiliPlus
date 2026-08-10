@@ -67,13 +67,23 @@ $ScrollPositionPatch = "lib/scripts/scroll_position.patch"
 # expose `_shouldIgnorePointer`
 $ScrollablePatch = "lib/scripts/scrollable.patch"
 
+# expose
 $ScaffoldPatch = "lib/scripts/scaffold.patch"
 
+# fix nested scrollable gesture
+# custom `HorizontalDragGestureRecognizer` support
 $ScrollableGesturePatch = "lib/scripts/scrollable_gesture.patch"
 
+# expose
 $DraggableScrollableSheetPatch = "lib/scripts/draggable_scrollable_sheet.patch"
 
+# expose
 $TextPatch = "lib/scripts/text.patch"
+
+# expose
+$TextPainterPatch = "lib/scripts/text_painter.patch"
+
+$SliverPatch = "lib/scripts/sliver.patch"
 
 # TODO: remove
 # https://github.com/flutter/flutter/issues/124078
@@ -110,7 +120,8 @@ $patches = @($ModalBarrierPatch, $TextSelectionPatch, $MouseCursorPatch,
             $PopupMenuPatch, $FABPatch, $NullSafetySelectableRegionPatch,
             $SelectableRegionPatch, $EditableTextPatch, $TextFieldPatch,
             $ScrollPositionPatch, $ScrollablePatch, $ScrollableGesturePatch,
-            $DraggableScrollableSheetPatch, $ScaffoldPatch, $TextPatch)
+            $DraggableScrollableSheetPatch, $ScaffoldPatch, $TextPatch,
+            $TextPainterPatch, $SliverPatch)
 
 switch ($platform.ToLower()) {
     "android" {

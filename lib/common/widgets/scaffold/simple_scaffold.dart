@@ -1,6 +1,6 @@
+import 'package:PiliPlus/common/widgets/slotted_layout_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart'
-    show BoxParentData, BoxHitTestResult, ChildLayoutHelper;
+import 'package:flutter/rendering.dart' show ChildLayoutHelper;
 
 class SimpleScaffold extends StatelessWidget {
   const SimpleScaffold({
@@ -63,18 +63,15 @@ class ScaffoldLayout
 }
 
 class _RenderScaffoldLayout extends RenderBox
-    with SlottedContainerRenderObjectMixin<ScaffoldType, RenderBox> {
+    with
+        SlottedContainerRenderObjectMixin<ScaffoldType, RenderBox>,
+        SlottedLayoutMixin {
   RenderBox? get fab => childForSlot(.fab);
   RenderBox? get appBar => childForSlot(.appBar);
   RenderBox get body => childForSlot(.body)!;
 
-  Offset _getOffset(RenderBox child) {
-    return (child.parentData as BoxParentData).offset;
-  }
-
-  void _setOffset(RenderBox child, Offset offset) {
-    (child.parentData as BoxParentData).offset = offset;
-  }
+  @override
+  Iterable<ScaffoldType> get slots => ScaffoldType.values;
 
   @override
   void performLayout() {
@@ -90,7 +87,7 @@ class _RenderScaffoldLayout extends RenderBox
         appBar,
         BoxConstraints.tightFor(width: constraints.maxWidth),
       ).height;
-      _setOffset(appBar, .zero);
+      setOffset(appBar, .zero);
 
       bodyOffset = Offset(0, appBarHeight);
       bodyConstraints = BoxConstraints.tightFor(
@@ -103,12 +100,12 @@ class _RenderScaffoldLayout extends RenderBox
     }
 
     final body = this.body..layout(bodyConstraints);
-    _setOffset(body, bodyOffset);
+    setOffset(body, bodyOffset);
 
     final fab = this.fab;
     if (fab != null) {
       final fabSize = ChildLayoutHelper.layoutChild(fab, constraints.loosen());
-      _setOffset(
+      setOffset(
         fab,
         Offset(
           constraints.maxWidth - fabSize.width,
@@ -122,31 +119,12 @@ class _RenderScaffoldLayout extends RenderBox
   void paint(PaintingContext context, Offset offset) {
     void doPaint(RenderBox? child) {
       if (child != null) {
-        context.paintChild(child, _getOffset(child) + offset);
+        context.paintChild(child, getOffset(child) + offset);
       }
     }
 
     doPaint(appBar);
     doPaint(body);
     doPaint(fab);
-  }
-
-  @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    for (final type in ScaffoldType.values) {
-      final child = childForSlot(type);
-      if (child == null) continue;
-      final bool isHit = result.addWithPaintOffset(
-        offset: _getOffset(child),
-        position: position,
-        hitTest: (BoxHitTestResult result, Offset transformed) {
-          return child.hitTest(result, position: transformed);
-        },
-      );
-      if (isHit) {
-        return true;
-      }
-    }
-    return false;
   }
 }

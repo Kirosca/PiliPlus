@@ -263,6 +263,7 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
         if (scaffoldState != null) {
           hideFab();
           scaffoldState.showBottomSheet(
+            constraints: const BoxConstraints(),
             (context) => replyReplyPage(showBackBtn: false),
           );
         } else {

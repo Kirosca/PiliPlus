@@ -51,32 +51,37 @@ class _DanmakuBlockPageState extends State<DanmakuBlockPage> {
   @override
   Widget build(BuildContext context) {
     return SimpleScaffold(
-      appBar: AppBar(
-        title: const Text('弹幕屏蔽'),
-        bottom: TabBar(
-          controller: _controller.tabController,
-          tabs: DmBlockType.values
-              .map(
-                (e) => Obx(
-                  () => Tab(
-                    text: '${e.label}(${_controller.rules[e.index].length})',
+      appBar: AppBar(title: const Text('弹幕屏蔽')),
+      body: Column(
+        children: [
+          TabBar(
+            controller: _controller.tabController,
+            tabs: DmBlockType.values
+                .map(
+                  (e) => Obx(
+                    () => Tab(
+                      text: '${e.label}(${_controller.rules[e.index].length})',
+                    ),
                   ),
-                ),
-              )
-              .toList(),
-        ),
-      ),
-      body: tabBarView(
-        controller: _controller.tabController,
-        children: DmBlockType.values
-            .map(
-              (e) => KeepAliveWrapper(
-                child: Obx(
-                  () => tabViewBuilder(e.index, _controller.rules[e.index]),
-                ),
-              ),
-            )
-            .toList(),
+                )
+                .toList(),
+          ),
+          Expanded(
+            child: tabBarView(
+              controller: _controller.tabController,
+              children: DmBlockType.values
+                  .map(
+                    (e) => KeepAliveWrapper(
+                      child: Obx(
+                        () =>
+                            tabViewBuilder(e.index, _controller.rules[e.index]),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
       ),
       fab: Padding(
         padding: .only(

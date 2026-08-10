@@ -340,6 +340,7 @@ class ChatItem extends StatelessWidget {
                           cid: cid,
                           cover: i['cover_url'],
                           dimension: res!.dimension,
+                          title: res.title,
                         );
                       }
                     } catch (err) {
@@ -424,9 +425,7 @@ class ChatItem extends StatelessWidget {
                 try {
                   SmartDialog.showLoading();
                   final bvid = content["bvid"];
-                  final res = await SearchHttp.ab2cWithDimension(
-                    bvid: bvid,
-                  );
+                  final res = await SearchHttp.ab2cWithDimension(bvid: bvid);
                   final cid = res?.cid;
                   SmartDialog.dismiss();
                   if (cid != null) {
@@ -435,6 +434,7 @@ class ChatItem extends StatelessWidget {
                       cid: cid,
                       cover: content['cover'],
                       dimension: res!.dimension,
+                      title: res.title,
                     );
                   }
                 } catch (err) {
@@ -538,6 +538,7 @@ class ChatItem extends StatelessWidget {
               cid: cid,
               cover: content['thumb'],
               dimension: res!.dimension,
+              title: res.title,
             );
           }
         };
