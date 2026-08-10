@@ -38,13 +38,24 @@ android {
     packagingOptions.jniLibs.useLegacyPackaging = true
 
     val keyProperties = Properties().also {
-        val properties = rootProject.file("key.properties")
-        if (properties.exists())
-            it.load(properties.inputStream())
+        val propFile = sequenceOf(
+            rootProject.file("key.properties"),
+            rootProject.file("../key.properties"),
+            file("key.properties")
+        ).firstOrNull { f -> f.exists() }
+        if (propFile != null) {
+            it.load(propFile.inputStream())
+        }
     }
 
     val config = keyProperties.getProperty("storeFile")?.let { storeFilePath ->
-        val keystoreFile = if (file(storeFilePath).exists()) file(storeFilePath) else rootProject.file(storeFilePath.removePrefix("../"))
+        val keystoreFile = sequenceOf(
+            file(storeFilePath),
+            rootProject.file(storeFilePath),
+            rootProject.file(storeFilePath.removePrefix("../")),
+            file("../$storeFilePath")
+        ).firstOrNull { f -> f.exists() } ?: file(storeFilePath)
+
         signingConfigs.create("release") {
             storeFile = keystoreFile
             storePassword = keyProperties.getProperty("storePassword")
