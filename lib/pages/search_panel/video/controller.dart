@@ -41,17 +41,45 @@ class SearchVideoController
   @override
   List<SearchVideoItemModel>? getDataList(SearchVideoData response) {
     final list = response.list;
-    if (list == null || list.isEmpty || !titleMatchOnly.value) return list;
+    if (list == null || list.isEmpty) return list;
+
+    if (page == 1) {
+      _seenVideoIds.clear();
+    }
 
     final cleanKeyword = keyword.trim().toLowerCase();
-    if (cleanKeyword.isEmpty) return list;
+    final keywords = cleanKeyword.isEmpty
+        ? <String>[]
+        : cleanKeyword.split(RegExp(r'\s+'));
 
-    final keywords = cleanKeyword.split(RegExp(r'\s+'));
+    final filteredList = list.where((item) {
+      if (titleMatchOnly.value && keywords.isNotEmpty) {
+        final videoTitle = (item.title ?? '').toLowerCase();
+        if (!keywords.every((k) => videoTitle.contains(k))) {
+          return false;
+        }
+      }
 
-    return list.where((item) {
-      final videoTitle = (item.title ?? '').toLowerCase();
-      return keywords.every((k) => videoTitle.contains(k));
+      final idKey = item.bvid ?? item.aid?.toString() ?? item.id?.toString();
+      if (idKey != null && idKey.isNotEmpty) {
+        if (_seenVideoIds.contains(idKey)) {
+          return false;
+        }
+        _seenVideoIds.add(idKey);
+      }
+
+      return true;
     }).toList();
+
+    if (filteredList.isEmpty && list.isNotEmpty && !isEnd) {
+      Future.microtask(() {
+        if (!isLoading && !isEnd) {
+          queryData(false);
+        }
+      });
+    }
+
+    return filteredList;
   }
 
   @override
