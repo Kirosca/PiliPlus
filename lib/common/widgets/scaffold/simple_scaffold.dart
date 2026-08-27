@@ -1,6 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:PiliPlus/common/widgets/slotted_layout_helper.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ChildLayoutHelper;
+import 'package:material_ui/material_ui.dart';
 
 class SimpleScaffold extends StatelessWidget {
   const SimpleScaffold({
@@ -92,7 +94,7 @@ class _RenderScaffoldLayout extends RenderBox
       bodyOffset = Offset(0, appBarHeight);
       bodyConstraints = BoxConstraints.tightFor(
         width: constraints.maxWidth,
-        height: constraints.maxHeight - appBarHeight,
+        height: math.max(constraints.maxHeight - appBarHeight, 0.0),
       );
     } else {
       bodyOffset = .zero;

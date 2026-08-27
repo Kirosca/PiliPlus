@@ -15,8 +15,8 @@ import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:easy_debounce/easy_throttle.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
 
 class VideoReplyPanel extends StatefulWidget {
   const VideoReplyPanel({
@@ -91,7 +91,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                       mainAxisAlignment: .spaceBetween,
                       children: [
                         Text(
-                          sortType.title,
+                          sortType.desc,
                           style: const TextStyle(fontSize: 13),
                         ),
                         TextButton.icon(
@@ -103,7 +103,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                             color: colorScheme.secondary,
                           ),
                           label: Text(
-                            sortType.label,
+                            sortType.descShort,
                             style: TextStyle(
                               fontSize: 13,
                               color: colorScheme.secondary,

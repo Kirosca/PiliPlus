@@ -14,8 +14,8 @@ import 'package:PiliPlus/pages/search/controller.dart' show DebounceStreamState;
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
 
 class DynMentionPanel extends StatefulWidget {
   const DynMentionPanel({
@@ -166,7 +166,7 @@ class _DynMentionPanelState
           ),
         ),
         Expanded(
-          child: SimpleScaffold(
+          child: ScaffoldLayout(
             body: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
                 if (notification is UserScrollNotification) {
@@ -240,7 +240,7 @@ class _DynMentionPanelState
                   return SliverMainAxisGroup(
                     slivers: [
                       SliverPinnedHeader(
-                        backgroundColor: theme.colorScheme.surface,
+                        backgroundColor: theme.bottomSheetTheme.backgroundColor,
                         child: Padding(
                           padding: const .symmetric(
                             horizontal: 16,
