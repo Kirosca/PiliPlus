@@ -63,23 +63,11 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的搜索词（普通词 + 剥离 # 后的 Tag 词，排除 - 词）
+  // 提取用于发送给 B 站 API 的搜索词（只剔除 - 排除词，保留普通词与 # 标签词原样发送）
   String get cleanSearchKeyword {
     final rawList = keyword.trim().split(RegExp(r'\s+'));
-    final searchTerms = <String>[];
-
-    for (final k in rawList) {
-      if (k.startsWith('-') && k.length > 1) {
-        // 排除词不发给 B 站 API
-        continue;
-      } else if (k.startsWith('#') && k.length > 1) {
-        // # 标签词：剥离 # 符号后一并发给 B 站服务器进行精准粗筛
-        searchTerms.add(k.substring(1));
-      } else if (k.isNotEmpty) {
-        searchTerms.add(k);
-      }
-    }
-
+    final searchTerms =
+        rawList.where((k) => !k.startsWith('-') || k.length <= 1);
     final result = searchTerms.join(' ');
     return result.isEmpty ? keyword : result;
   }
