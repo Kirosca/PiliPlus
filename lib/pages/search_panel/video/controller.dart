@@ -133,10 +133,9 @@ class SearchVideoController
           return false;
         }
 
-        // 3. Tag 标签过滤 (#)：Tag 标签或标题中必须包含指定 # 关键词
+        // 3. Tag 标签过滤 (#)：视频 Tag 标签中必须包含指定 # 关键词
         if (tagKeywords.isNotEmpty &&
-            !tagKeywords.every(
-                (k) => videoTags.contains(k) || videoTitle.contains(k))) {
+            !tagKeywords.every((k) => videoTags.contains(k))) {
           return false;
         }
       }
