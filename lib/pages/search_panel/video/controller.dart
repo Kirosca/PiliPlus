@@ -63,12 +63,24 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的纯正向搜索词（剥离 - 和 # 符号）
+  // 提取用于发送给 B 站 API 的纯正向搜索词（剥离 - 排除词，并剥离 # 符号）
   String get cleanSearchKeyword {
     final rawList = keyword.trim().split(RegExp(r'\s+'));
-    final positiveWords = rawList.where(
-        (k) => (!k.startsWith('-') && !k.startsWith('#')) || k.length <= 1);
-    final result = positiveWords.join(' ');
+    final searchTerms = <String>[];
+
+    for (final k in rawList) {
+      if (k.startsWith('-') && k.length > 1) {
+        // 排除词不发给 B 站 API
+        continue;
+      } else if (k.startsWith('#') && k.length > 1) {
+        // # 标签词：剥离 # 符号后发给 B 站 API 协同检索
+        searchTerms.add(k.substring(1));
+      } else if (k.isNotEmpty) {
+        searchTerms.add(k);
+      }
+    }
+
+    final result = searchTerms.join(' ');
     return result.isEmpty ? keyword : result;
   }
 
