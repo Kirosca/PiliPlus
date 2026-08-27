@@ -63,11 +63,11 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的纯正向搜索词
+  // 提取用于发送给 B 站 API 的纯正向搜索词（剥离 - 和 # 符号）
   String get cleanSearchKeyword {
     final rawList = keyword.trim().split(RegExp(r'\s+'));
-    final positiveWords =
-        rawList.where((k) => !k.startsWith('-') || k.length <= 1);
+    final positiveWords = rawList.where(
+        (k) => (!k.startsWith('-') && !k.startsWith('#')) || k.length <= 1);
     final result = positiveWords.join(' ');
     return result.isEmpty ? keyword : result;
   }
@@ -104,10 +104,13 @@ class SearchVideoController
         keyword.trim().toLowerCase().split(RegExp(r'\s+'));
     final includeKeywords = <String>[];
     final excludeKeywords = <String>[];
+    final tagKeywords = <String>[];
 
     for (final k in rawKeywords) {
       if (k.startsWith('-') && k.length > 1) {
         excludeKeywords.add(k.substring(1));
+      } else if (k.startsWith('#') && k.length > 1) {
+        tagKeywords.add(k.substring(1));
       } else if (k.isNotEmpty) {
         includeKeywords.add(k);
       }
@@ -116,6 +119,7 @@ class SearchVideoController
     final filteredList = list.where((item) {
       if (titleMatchOnly.value) {
         final videoTitle = (item.title ?? '').toLowerCase();
+        final videoTags = (item.tag ?? '').toLowerCase();
 
         // 1. 正向多词全匹配：必须包含所有的必含词
         if (includeKeywords.isNotEmpty &&
@@ -126,6 +130,13 @@ class SearchVideoController
         // 2. 负向排除词过滤：包含任意一个排除词则强行剔除
         if (excludeKeywords.isNotEmpty &&
             excludeKeywords.any((k) => videoTitle.contains(k))) {
+          return false;
+        }
+
+        // 3. Tag 标签过滤 (#)：Tag 标签或标题中必须包含指定 # 关键词
+        if (tagKeywords.isNotEmpty &&
+            !tagKeywords.every(
+                (k) => videoTags.contains(k) || videoTitle.contains(k))) {
           return false;
         }
       }
