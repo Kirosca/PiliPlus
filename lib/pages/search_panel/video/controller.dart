@@ -63,25 +63,32 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的纯正向搜索词（剥离 - 排除词，并剥离 # 符号）
+  // 提取用于发送给 B 站 API 的搜索词：
+  // 1. 如果有普通标题词，优先只发送普通标题词（如 "教程 -入门 #神仙" -> 只发 "教程"）
+  // 2. 如果没有普通标题词但有 #Tag 词，剥离 # 发送 Tag 词（如 "-入门 #神仙" -> 发送 "神仙"）
   String get cleanSearchKeyword {
     final rawList = keyword.trim().split(RegExp(r'\s+'));
-    final searchTerms = <String>[];
+    final normalWords = <String>[];
+    final tagWords = <String>[];
 
     for (final k in rawList) {
       if (k.startsWith('-') && k.length > 1) {
         // 排除词不发给 B 站 API
         continue;
       } else if (k.startsWith('#') && k.length > 1) {
-        // # 标签词：剥离 # 符号后发给 B 站 API 协同检索
-        searchTerms.add(k.substring(1));
+        tagWords.add(k.substring(1));
       } else if (k.isNotEmpty) {
-        searchTerms.add(k);
+        normalWords.add(k);
       }
     }
 
-    final result = searchTerms.join(' ');
-    return result.isEmpty ? keyword : result;
+    if (normalWords.isNotEmpty) {
+      return normalWords.join(' ');
+    }
+    if (tagWords.isNotEmpty) {
+      return tagWords.join(' ');
+    }
+    return keyword;
   }
 
   @override
