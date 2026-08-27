@@ -178,7 +178,7 @@ class SearchVideoController
       _consecutiveEmptyCount = 0;
     } else if (list.isNotEmpty && !isEnd) {
       _consecutiveEmptyCount++;
-      if (_consecutiveEmptyCount < 15) {
+      if (_consecutiveEmptyCount < 20) {
         Future.microtask(() {
           if (!isLoading && !isEnd) {
             queryData(false);
