@@ -57,7 +57,7 @@ class SearchVideoController
     }
 
     try {
-      while (!isEnd && _consecutiveEmptyCount < 20) {
+      while (!isEnd && _consecutiveEmptyCount < 30) {
         final LoadingState<SearchVideoData> res = await customGetData();
         if (res case Success(:final response)) {
           final rawList = response.list;
