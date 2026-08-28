@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 allprojects {
     repositories {
+        maven(url = uri(rootProject.file("repo")))
         google()
         mavenCentral()
         maven(url = "https://jitpack.io")
