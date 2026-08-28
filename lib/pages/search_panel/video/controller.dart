@@ -58,6 +58,9 @@ class SearchVideoController
 
     try {
       while (!isEnd && _consecutiveEmptyCount < 10) {
+        if (_consecutiveEmptyCount > 0) {
+          await Future.delayed(const Duration(milliseconds: 150));
+        }
         final LoadingState<SearchVideoData> res = await customGetData();
         if (res case Success(:final response)) {
           final rawList = response.list;
