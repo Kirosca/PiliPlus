@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
 import 'package:PiliPlus/utils/extension/box_ext.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
@@ -8,6 +9,8 @@ import 'package:PiliPlus/utils/font_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -50,6 +53,16 @@ class _FontSettingPageState extends State<FontSettingPage> {
       ..updateMyAppTheme();
   }
 
+  /// ref [Typography._withPlatform]
+  /// ref [Material]
+  static final String? _kFontFamily = (switch (defaultTargetPlatform) {
+    .iOS => Typography.whiteCupertino,
+    .android || .fuchsia => Typography.whiteMountainView,
+    .windows => Typography.whiteRedmond,
+    .macOS => Typography.whiteRedwoodCity,
+    .linux => Typography.whiteHelsinki,
+  }).bodyMedium?.fontFamily;
+
   @override
   Widget build(BuildContext context) {
     return SimpleScaffold(
@@ -71,6 +84,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
         ],
       ),
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
             Expanded(
@@ -86,7 +100,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
                       : "我能吞下玻璃而不伤身体"}\n\n'
                   '注：部分字体可能无法应用',
                   style: TextStyle(
-                    fontFamily: _selectedFont,
+                    fontFamily: _selectedFont ?? _kFontFamily,
                     fontWeight: _selectedWeight == -1
                         ? null
                         : FontWeight.values[_selectedWeight],
@@ -95,40 +109,97 @@ class _FontSettingPageState extends State<FontSettingPage> {
                 ),
               ),
             ),
-            if (_fonts.isNotEmpty)
-              _buildItem(
-                Row(
-                  mainAxisSize: .min,
-                  children: [
-                    const Text('字体：', style: TextStyle(fontWeight: .bold)),
-                    Expanded(
-                      child: DropdownButton(
-                        focusColor: Colors.transparent,
-                        value: _selectedFont,
-                        isExpanded: true,
-                        items: _fonts
-                            .map(
-                              (font) => DropdownMenuItem(
-                                value: font,
-                                child: Text(
-                                  font,
-                                  style: TextStyle(fontFamily: font),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          setState(
-                            () => _selectedFont == value
-                                ? _selectedFont = null
-                                : _selectedFont = value,
-                          );
-                        },
-                      ),
+            _buildItem(
+              Row(
+                mainAxisSize: .min,
+                children: [
+                  const Text('字体：', style: TextStyle(fontWeight: .bold)),
+                  Expanded(
+                    child: DropdownButton<String?>(
+                      focusColor: Colors.transparent,
+                      value: _selectedFont,
+                      isExpanded: true,
+                      underline: const SizedBox.shrink(),
+                      items: <DropdownMenuItem<String?>>[
+                        const DropdownMenuItem(value: null, child: Text('默认')),
+                        ...FontUtils.customFonts.keys.map(
+                          (font) => _DropdownMenuItem(
+                            value: font,
+                            onRemove: () {
+                              FontUtils.removeFont(font);
+                              if (_selectedFont == font) {
+                                _selectedFont = null;
+                              }
+                              setState(() {});
+                            },
+                            child: Text(font.split('/').last),
+                          ),
+                        ),
+                        ..._fonts.map(
+                          (font) => DropdownMenuItem(
+                            value: font,
+                            child: Text(
+                              font,
+                              style: TextStyle(fontFamily: font),
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) async {
+                        if (value != null &&
+                            FontUtils.customFonts.containsKey(value)) {
+                          await FontUtils.loadFontIfNecessary(value);
+                          if (!mounted) return;
+                        }
+                        setState(
+                          () => _selectedFont == value
+                              ? _selectedFont = null
+                              : _selectedFont = value,
+                        );
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                  Padding(
+                    padding: const .only(left: 5),
+                    child: iconButton(
+                      size: 34,
+                      iconSize: 20,
+                      tooltip: '导入',
+                      context: context,
+                      onPressed: () async {
+                        SmartDialog.showLoading();
+                        final font = await FontUtils.pickFonts();
+                        SmartDialog.dismiss();
+                        if (!mounted) return;
+                        if (font != null) {
+                          _selectedFont = font;
+                          setState(() {});
+                        }
+                      },
+                      icon: const Icon(Icons.add),
+                    ),
+                  ),
+                  Padding(
+                    padding: const .only(left: 5),
+                    child: iconButton(
+                      size: 34,
+                      iconSize: 20,
+                      tooltip: '清空',
+                      context: context,
+                      onPressed: () async {
+                        SmartDialog.showLoading();
+                        _selectedFont = null;
+                        await FontUtils.clearFonts();
+                        SmartDialog.dismiss();
+                        if (!mounted) return;
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.clear_all),
+                    ),
+                  ),
+                ],
               ),
+            ),
             _buildItem(
               Row(
                 children: [
@@ -220,6 +291,39 @@ class _FontSettingPageState extends State<FontSettingPage> {
         ),
       ),
       child: child,
+    );
+  }
+}
+
+class _DropdownMenuItem<T> extends DropdownMenuItem<T> {
+  const _DropdownMenuItem({
+    super.key,
+    super.onTap,
+    super.value,
+    super.enabled,
+    super.alignment,
+    required super.child,
+    required this.onRemove,
+  });
+
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: super.build(context)),
+        iconButton(
+          size: 38,
+          iconSize: 22,
+          tooltip: '移除',
+          onPressed: () {
+            if (Get.routing.route is! GetPageRoute) Get.back();
+            onRemove();
+          },
+          icon: const Icon(Icons.clear),
+        ),
+      ],
     );
   }
 }

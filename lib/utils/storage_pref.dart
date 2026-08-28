@@ -1054,4 +1054,11 @@ abstract final class Pref {
 
   static bool get enableDocProvider =>
       _setting.get(SettingBoxKey.enableDocProvider, defaultValue: false);
+
+  static Map<String, String> get customAppFont => Map<String, String>.from(
+    _setting.get(
+      SettingBoxKey.customAppFont,
+      defaultValue: const <String, String>{},
+    ),
+  );
 }
