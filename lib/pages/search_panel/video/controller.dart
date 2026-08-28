@@ -145,7 +145,7 @@ class SearchVideoController
 
         // 4. UP 主作者过滤 (@)：视频作者必须匹配 @ 关键词（支持多 @ 白名单）
         if (upKeywords.isNotEmpty &&
-            !upKeywords.some((k) => videoAuthor.contains(k))) {
+            !upKeywords.any((k) => videoAuthor.contains(k))) {
           return false;
         }
       }
