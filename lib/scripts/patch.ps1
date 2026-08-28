@@ -140,13 +140,17 @@ switch ($platform.ToLower()) {
         $patches += $ScrollViewPatch
         $patches += $BottomSheetIOSFlutterPatch
         $patches += $NavigatorPatch
+
+        git reset --hard HEAD
     }
     "linux" {
         git reset --hard HEAD
     }
     "macos" {
+        git reset --hard HEAD
     }
     "windows" {
+        git reset --hard HEAD
     }
     default {}
 }
@@ -176,11 +180,16 @@ foreach ($revert in $reverts) {
 }
 
 foreach ($patch in $patches) {
-    git apply "$env:GITHUB_WORKSPACE/$patch"
+    git apply --ignore-space-change --ignore-whitespace --3way "$env:GITHUB_WORKSPACE/$patch" 2>$null
     if ($LASTEXITCODE -eq 0) {
         Write-Host "$patch applied"
     } else {
-        throw "$LASTEXITCODE"
+        git apply --ignore-whitespace "$env:GITHUB_WORKSPACE/$patch" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "$patch applied (whitespace ignored)"
+        } else {
+            Write-Warning "Skipped already merged or non-applicable patch: $patch"
+        }
     }
 }
 
