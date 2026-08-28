@@ -122,9 +122,11 @@ class SearchStat extends BaseStat {
 
 class SearchOwner extends Owner {
   SearchOwner.fromJson(Map<String, dynamic> json) {
-    mid = json["mid"];
-    name = json["author"];
-    face = json['upic'];
+    mid = json["mid"] ?? json["uid"];
+    final rawName = (json["author"] ?? json["uname"] ?? json["up_name"]) as String?;
+    name = rawName?.replaceAll(RegExp(r'<[^>]*>'), '');
+    face = (json['upic'] ?? json['face'] ?? json['uface'] ?? json['user_cover'])
+        as String?;
   }
 }
 
