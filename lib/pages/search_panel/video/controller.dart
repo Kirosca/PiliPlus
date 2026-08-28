@@ -45,21 +45,73 @@ class SearchVideoController
 
   @override
   Future<void> queryData([bool isRefresh = true]) async {
+    if (isLoading || (!isRefresh && isEnd)) return;
+    isLoading = true;
+
     if (isRefresh) {
+      page = 1;
+      isEnd = false;
+      _seenVideoIds.clear();
+      _consecutiveEmptyCount = 0;
       _autoFetchRetryCount = 0;
     }
-    await super.queryData(isRefresh);
 
-    if (!isRefresh &&
-        loadingState.value is Error &&
-        _consecutiveEmptyCount > 0 &&
-        _autoFetchRetryCount < 1) {
-      _autoFetchRetryCount++;
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (!isLoading && !isEnd) {
-          queryData(false);
+    try {
+      while (!isEnd && _consecutiveEmptyCount < 20) {
+        final LoadingState<SearchVideoData> res = await customGetData();
+        if (res case Success(:final response)) {
+          final rawList = response.list;
+          // B 站接口本身没有更多数据了，说明真正到底了
+          if (rawList == null || rawList.isEmpty) {
+            isEnd = true;
+            if (isRefresh &&
+                (loadingState.value is! Success ||
+                    (loadingState.value as Success).response == null)) {
+              loadingState.value = const Success(<SearchVideoItemModel>[]);
+            } else if (hasFooter == true) {
+              loadingState.refresh();
+            }
+            break;
+          }
+
+          if (!customHandleResponse(isRefresh, res)) {
+            final filteredList = _applyCustomFilter(rawList);
+            page++;
+
+            if (filteredList.isNotEmpty) {
+              _consecutiveEmptyCount = 0;
+              handleListResponse(filteredList);
+              if (isRefresh &&
+                  (loadingState.value is! Success ||
+                      (loadingState.value as Success).response == null ||
+                      page == 2)) {
+                checkIsEnd(filteredList.length);
+                loadingState.value = Success(filteredList);
+              } else if (loadingState.value case Success(:final response)) {
+                response!.addAll(filteredList);
+                checkIsEnd(response.length);
+                loadingState.refresh();
+              } else {
+                loadingState.value = Success(filteredList);
+              }
+              break; // 成功找到符合条件的视频，停止循环，直接渲染！
+            } else {
+              // 当前页全部被过滤掉，但 B 站接口还有后续数据：
+              _consecutiveEmptyCount++;
+              // 自动继续循环，静默去拉取第 2 页、第 3 页... 直到找到视频！
+            }
+          } else {
+            break;
+          }
+        } else {
+          if (isRefresh && !handleError(res is Error ? res.errMsg : null)) {
+            loadingState.value = res as Error;
+          }
+          break;
         }
-      });
+      }
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -98,16 +150,8 @@ class SearchVideoController
         },
       );
 
-  @override
-  List<SearchVideoItemModel>? getDataList(SearchVideoData response) {
-    final list = response.list;
-    if (list == null || list.isEmpty) return list;
-
-    if (page == 1) {
-      _seenVideoIds.clear();
-      _consecutiveEmptyCount = 0;
-    }
-
+  List<SearchVideoItemModel> _applyCustomFilter(
+      List<SearchVideoItemModel> list) {
     final rawKeywords =
         keyword.trim().toLowerCase().split(RegExp(r'\s+'));
     final includeKeywords = <String>[];
@@ -128,34 +172,33 @@ class SearchVideoController
     }
 
     final filteredList = list.where((item) {
-      if (titleMatchOnly.value) {
-        final videoTitle = (item.title ?? '').toLowerCase();
-        final videoTags = (item.tag ?? '').toLowerCase();
-        final videoAuthor = (item.owner?.name ?? '').toLowerCase();
+      final videoTitle = (item.title ?? '').toLowerCase();
+      final videoTags = (item.tag ?? '').toLowerCase();
+      final videoAuthor = (item.owner?.name ?? '').toLowerCase();
 
-        // 1. 正向多词全匹配：必须包含所有的必含词
-        if (includeKeywords.isNotEmpty &&
-            !includeKeywords.every((k) => videoTitle.contains(k))) {
-          return false;
-        }
+      // 1. 负向排除词一票否决 (-)
+      if (excludeKeywords.isNotEmpty &&
+          excludeKeywords.any((k) => videoTitle.contains(k))) {
+        return false;
+      }
 
-        // 2. 负向排除词过滤：包含任意一个排除词则强行剔除
-        if (excludeKeywords.isNotEmpty &&
-            excludeKeywords.any((k) => videoTitle.contains(k))) {
-          return false;
-        }
+      // 2. 正向普通词全匹配 (AND)
+      if (titleMatchOnly.value &&
+          includeKeywords.isNotEmpty &&
+          !includeKeywords.every((k) => videoTitle.contains(k))) {
+        return false;
+      }
 
-        // 3. Tag 标签过滤 (#)：视频 Tag 标签中必须包含指定 # 关键词
-        if (tagKeywords.isNotEmpty &&
-            !tagKeywords.every((k) => videoTags.contains(k))) {
-          return false;
-        }
+      // 3. Tag 标签过滤 (#)
+      if (tagKeywords.isNotEmpty &&
+          !tagKeywords.every((k) => videoTags.contains(k))) {
+        return false;
+      }
 
-        // 4. UP 主作者过滤 (@)：视频作者必须匹配 @ 关键词（支持多 @ 白名单）
-        if (upKeywords.isNotEmpty &&
-            !upKeywords.any((k) => videoAuthor.contains(k))) {
-          return false;
-        }
+      // 4. UP 主作者过滤 (@)
+      if (upKeywords.isNotEmpty &&
+          !upKeywords.any((k) => videoAuthor.contains(k))) {
+        return false;
       }
 
       final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
@@ -180,20 +223,14 @@ class SearchVideoController
       return true;
     }).toList();
 
-    if (filteredList.isNotEmpty) {
-      _consecutiveEmptyCount = 0;
-    } else if (list.isNotEmpty && !isEnd) {
-      _consecutiveEmptyCount++;
-      if (_consecutiveEmptyCount < 20) {
-        Future.delayed(const Duration(milliseconds: 50), () {
-          if (!isEnd) {
-            queryData(false);
-          }
-        });
-      }
-    }
-
     return filteredList;
+  }
+
+  @override
+  List<SearchVideoItemModel>? getDataList(SearchVideoData response) {
+    final list = response.list;
+    if (list == null || list.isEmpty) return list;
+    return _applyCustomFilter(list);
   }
 
   @override
