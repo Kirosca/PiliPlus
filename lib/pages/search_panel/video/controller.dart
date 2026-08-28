@@ -57,20 +57,13 @@ class SearchVideoController
     }
 
     try {
-      while (!isEnd && _consecutiveEmptyCount < 30) {
+      while (!isEnd && _consecutiveEmptyCount < 10) {
         final LoadingState<SearchVideoData> res = await customGetData();
         if (res case Success(:final response)) {
           final rawList = response.list;
           // B 站接口本身没有更多数据了，说明真正到底了
           if (rawList == null || rawList.isEmpty) {
             isEnd = true;
-            if (isRefresh &&
-                (loadingState.value is! Success ||
-                    (loadingState.value as Success).response == null)) {
-              loadingState.value = const Success(<SearchVideoItemModel>[]);
-            } else if (hasFooter == true) {
-              loadingState.refresh();
-            }
             break;
           }
 
@@ -109,6 +102,13 @@ class SearchVideoController
           }
           break;
         }
+      }
+
+      // 如果全部扫描完毕后仍未找到符合条件的视频，优雅结束加载并展示“暂无更多相关视频”
+      if (loadingState.value is! Success && loadingState.value is! Error) {
+        loadingState.value = const Success(<SearchVideoItemModel>[]);
+      } else if (hasFooter == true) {
+        loadingState.refresh();
       }
     } finally {
       isLoading = false;
