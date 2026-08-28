@@ -185,8 +185,8 @@ class SearchVideoController
     } else if (list.isNotEmpty && !isEnd) {
       _consecutiveEmptyCount++;
       if (_consecutiveEmptyCount < 20) {
-        Future.microtask(() {
-          if (!isLoading && !isEnd) {
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (!isEnd) {
             queryData(false);
           }
         });
