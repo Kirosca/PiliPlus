@@ -63,7 +63,7 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的搜索词（只剔除 - 排除词，保留普通词与 # 标签词原样发送）
+  // 提取用于发送给 B 站 API 的搜索词（只剔除 - 排除词，保留普通词、# 标签词与 @ UP主原样发送）
   String get cleanSearchKeyword {
     final rawList = keyword.trim().split(RegExp(r'\s+'));
     final searchTerms =
@@ -105,12 +105,15 @@ class SearchVideoController
     final includeKeywords = <String>[];
     final excludeKeywords = <String>[];
     final tagKeywords = <String>[];
+    final upKeywords = <String>[];
 
     for (final k in rawKeywords) {
       if (k.startsWith('-') && k.length > 1) {
         excludeKeywords.add(k.substring(1));
       } else if (k.startsWith('#') && k.length > 1) {
         tagKeywords.add(k.substring(1));
+      } else if (k.startsWith('@') && k.length > 1) {
+        upKeywords.add(k.substring(1));
       } else if (k.isNotEmpty) {
         includeKeywords.add(k);
       }
@@ -120,6 +123,7 @@ class SearchVideoController
       if (titleMatchOnly.value) {
         final videoTitle = (item.title ?? '').toLowerCase();
         final videoTags = (item.tag ?? '').toLowerCase();
+        final videoAuthor = (item.owner?.name ?? '').toLowerCase();
 
         // 1. 正向多词全匹配：必须包含所有的必含词
         if (includeKeywords.isNotEmpty &&
@@ -136,6 +140,12 @@ class SearchVideoController
         // 3. Tag 标签过滤 (#)：视频 Tag 标签中必须包含指定 # 关键词
         if (tagKeywords.isNotEmpty &&
             !tagKeywords.every((k) => videoTags.contains(k))) {
+          return false;
+        }
+
+        // 4. UP 主作者过滤 (@)：视频作者必须匹配 @ 关键词（支持多 @ 白名单）
+        if (upKeywords.isNotEmpty &&
+            !upKeywords.some((k) => videoAuthor.contains(k))) {
           return false;
         }
       }
