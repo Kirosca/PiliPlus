@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
-import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
 import 'package:PiliPlus/utils/extension/box_ext.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
@@ -24,9 +24,13 @@ class FontSettingPage extends StatefulWidget {
 }
 
 class _FontSettingPageState extends State<FontSettingPage> {
-  String? _selectedFont = Pref.appFont;
+  AppFont _appFont = FontUtils.appFont;
+  String? get _selectedFont => _appFont.fontFamily;
+
   int _selectedWeight = Pref.appFontWeight;
   double _selectedScale = Pref.defaultTextScale;
+
+  final Map<String, Uint8List> _customFonts = {};
 
   late final List<String> _fonts;
   late ColorScheme colorScheme;
@@ -39,15 +43,9 @@ class _FontSettingPageState extends State<FontSettingPage> {
   void initState() {
     super.initState();
     _fonts = FontUtils.getFont().toList();
-    if (_selectedFont != null) {
-      final fonts = FontUtils.customFonts.keys.toList();
-      var index = fonts.indexWhere((e) => e == _selectedFont);
-      if (index == -1) {
-        index = _fonts.indexWhere((e) => e == _selectedFont);
-        if (index != -1) {
-          index += fonts.length;
-        }
-      }
+
+    if (_selectedFont != null && !_appFont.isCustom) {
+      final index = _fonts.indexWhere((e) => e == _selectedFont);
       if (index != -1) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (scrollController.hasClients) {
@@ -66,8 +64,20 @@ class _FontSettingPageState extends State<FontSettingPage> {
     scrollController = PrimaryScrollController.of(context);
   }
 
-  void _saveFontSetting() {
-    GStorage.setting.putAllNE({
+  Future<void> _saveFontSetting() async {
+    if (_appFont == FontUtils.appFont) return Get.back();
+
+    if (_appFont.isCustom) {
+      final bytes = _customFonts[_selectedFont];
+      assert(bytes != null);
+      FontUtils.fontFile.writeAsBytes(bytes!);
+    } else {
+      FontUtils.removeFontIfExists();
+    }
+
+    FontUtils.appFont = _appFont;
+
+    await GStorage.setting.putAllNE({
       SettingBoxKey.appFont: _selectedFont,
       SettingBoxKey.appFontWeight: _selectedWeight,
       SettingBoxKey.defaultTextScale: _selectedScale,
@@ -78,13 +88,17 @@ class _FontSettingPageState extends State<FontSettingPage> {
       ..updateMyAppTheme();
   }
 
-  Future<void> _onFontChanged(String? value) async {
-    if (_selectedFont == value) return;
-    if (value != null && FontUtils.customFonts.containsKey(value)) {
-      await FontUtils.loadFontIfNecessary(value);
-      if (!mounted) return;
+  @override
+  void dispose() {
+    super.dispose();
+    if (_customFonts.isNotEmpty) {
+      _customFonts.clear();
     }
-    _selectedFont = value;
+  }
+
+  void _onFontChanged(String? value, {bool isCustom = false}) {
+    if (_selectedFont == value) return;
+    _appFont = (fontFamily: value, isCustom: isCustom);
     setState(() {});
   }
 
@@ -97,39 +111,47 @@ class _FontSettingPageState extends State<FontSettingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final fonts = FontUtils.customFonts.keys.toList();
-    final customFonts = SliverList.builder(
-      itemCount: fonts.length,
-      itemBuilder: (context, index) {
-        final font = fonts[index];
-        return ListTile(
-          minTileHeight: _tileHeight,
-          tileColor: _tileColor(font),
-          onTap: () => _onFontChanged(font),
-          title: Text(font.split('/').last),
-          trailing: iconButton(
-            size: 38,
-            iconSize: 22,
-            tooltip: '移除',
-            onPressed: () {
-              FontUtils.removeFont(font);
-              if (_selectedFont == font) {
-                _selectedFont = null;
-              }
-              setState(() {});
-            },
-            icon: const Icon(Icons.clear),
-          ),
-        );
-      },
-    );
+    final Widget? customFonts;
+    if (_customFonts.isNotEmpty) {
+      final fonts = _customFonts.keys.toList();
+      customFonts = SliverList.builder(
+        itemCount: fonts.length,
+        itemBuilder: (context, index) {
+          final font = fonts[index];
+          return ListTile(
+            minTileHeight: _tileHeight,
+            tileColor: _tileColor(font),
+            onTap: () => _onFontChanged(font, isCustom: true),
+            title: Text(
+              font.split('/').last,
+              style: TextStyle(fontFamily: font),
+            ),
+            trailing: iconButton(
+              size: 38,
+              iconSize: 22,
+              tooltip: '移除',
+              onPressed: () {
+                if (_selectedFont == font) {
+                  _appFont = (fontFamily: null, isCustom: false);
+                }
+                _customFonts.remove(font);
+                setState(() {});
+              },
+              icon: const Icon(Icons.clear),
+            ),
+          );
+        },
+      );
+    } else {
+      customFonts = null;
+    }
     return SimpleScaffold(
       appBar: AppBar(
         title: const Text('App字体设置'),
         actions: [
           TextButton(
             onPressed: () => setState(() {
-              _selectedFont = null;
+              _appFont = (fontFamily: null, isCustom: false);
               _selectedWeight = -1;
               _selectedScale = 1;
             }),
@@ -195,8 +217,13 @@ class _FontSettingPageState extends State<FontSettingPage> {
                           ),
                           Expanded(
                             child: Text(
-                              _selectedFont?.split('/').last ?? '默认',
-                              style: const TextStyle(fontSize: 15),
+                              _appFont.isCustom
+                                  ? _selectedFont!.split('/').last
+                                  : _selectedFont ?? '默认',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontFamily: _selectedFont ?? '',
+                              ),
                             ),
                           ),
                           Padding(
@@ -212,37 +239,15 @@ class _FontSettingPageState extends State<FontSettingPage> {
                                 SmartDialog.dismiss();
                                 if (!mounted) return;
                                 if (font != null) {
-                                  _selectedFont = font;
+                                  _customFonts.addAll(font);
+                                  _appFont = (
+                                    fontFamily: font.keys.first,
+                                    isCustom: true,
+                                  );
                                   setState(() {});
                                 }
                               },
                               icon: const Icon(Icons.add),
-                            ),
-                          ),
-                          Padding(
-                            padding: const .only(left: 8),
-                            child: iconButton(
-                              size: 32,
-                              iconSize: 20,
-                              tooltip: '清空',
-                              context: context,
-                              onPressed: () => showConfirmDialog(
-                                context: context,
-                                title: const Text('确定清空已导入字体？'),
-                                onConfirm: () async {
-                                  SmartDialog.showLoading();
-                                  if (FontUtils.customFonts.keys.contains(
-                                    _selectedFont,
-                                  )) {
-                                    _selectedFont = null;
-                                  }
-                                  await FontUtils.clearFonts();
-                                  SmartDialog.dismiss();
-                                  if (!mounted) return;
-                                  setState(() {});
-                                },
-                              ),
-                              icon: const Icon(Icons.clear_all),
                             ),
                           ),
                         ],
@@ -263,7 +268,21 @@ class _FontSettingPageState extends State<FontSettingPage> {
                               title: const Text('默认'),
                             ),
                           ),
-                          customFonts,
+                          if (FontUtils.isCustom)
+                            SliverToBoxAdapter(
+                              child: ListTile(
+                                minTileHeight: _tileHeight,
+                                tileColor: _tileColor(FontUtils.fontFamily),
+                                onTap: () => _onFontChanged(
+                                  FontUtils.fontFamily,
+                                  isCustom: true,
+                                ),
+                                title: Text(
+                                  FontUtils.fontFamily!.split('/').last,
+                                ),
+                              ),
+                            ),
+                          ?customFonts,
                           if (_fonts.isNotEmpty)
                             SliverList.builder(
                               itemCount: _fonts.length,
