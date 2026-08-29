@@ -205,7 +205,7 @@ Commit Hash: ${BuildConfig.commitHash}''',
           ListTile(
             onTap: () => PageUtils.launchURL(Constants.afdianUrl),
             leading: const Icon(
-              Icons.favorite,
+              Icons.favorite_outline,
               color: Color(0xFFFD5674),
             ),
             title: const Text('支持作者 (爱发电)'),
