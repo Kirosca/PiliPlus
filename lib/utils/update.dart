@@ -103,8 +103,16 @@ abstract final class Update {
                   downloadBtn('rpm', ext: 'rpm'),
                   downloadBtn('deb', ext: 'deb'),
                   downloadBtn('targz', ext: 'tar.gz'),
-                ] else
-                  downloadBtn('Github'),
+                ] else ...[
+                  downloadBtn('GitHub'),
+                ],
+                TextButton(
+                  onPressed: () {
+                    SmartDialog.dismiss();
+                    PageUtils.launchURL(Constants.giteeReleasesUrl);
+                  },
+                  child: const Text('Gitee'),
+                ),
               ],
             );
           },
@@ -119,28 +127,37 @@ abstract final class Update {
   static Future<void> onDownload(Map data, {String? ext}) async {
     SmartDialog.dismiss();
     try {
-      void download(String plat) {
-        if (data['assets'].isNotEmpty) {
-          for (Map<String, dynamic> i in data['assets']) {
-            final String name = i['name'];
-            if (name.contains(plat) &&
-                (ext == null || ext.isEmpty ? true : name.endsWith(ext))) {
-              PageUtils.launchURL(i['browser_download_url']);
+      if (data['assets'] is List && (data['assets'] as List).isNotEmpty) {
+        final List assets = data['assets'];
+
+        if (Platform.isAndroid) {
+          for (Map<String, dynamic> item in assets) {
+            final String name = item['name'] ?? '';
+            if (name.endsWith('.apk')) {
+              PageUtils.launchURL(item['browser_download_url']);
               return;
             }
           }
-          throw UnsupportedError('platform not found: $plat');
+        } else if (Platform.isIOS) {
+          for (Map<String, dynamic> item in assets) {
+            final String name = item['name'] ?? '';
+            if (name.endsWith('.ipa')) {
+              PageUtils.launchURL(item['browser_download_url']);
+              return;
+            }
+          }
+        } else {
+          for (Map<String, dynamic> item in assets) {
+            final String name = item['name'] ?? '';
+            if (name.contains(Platform.operatingSystem) &&
+                (ext == null || ext.isEmpty ? true : name.endsWith(ext))) {
+              PageUtils.launchURL(item['browser_download_url']);
+              return;
+            }
+          }
         }
       }
-
-      if (Platform.isAndroid) {
-        // 获取设备信息
-        AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
-        // [arm64-v8a]
-        download(androidInfo.supportedAbis.first);
-      } else {
-        download(Platform.operatingSystem);
-      }
+      throw UnsupportedError('platform not found');
     } catch (e) {
       if (kDebugMode) debugPrint('download error: $e');
       PageUtils.launchURL('${Constants.sourceCodeUrl}/releases/latest');
