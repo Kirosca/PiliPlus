@@ -1,4 +1,5 @@
 import 'package:PiliPlus/common/skeleton/video_reply.dart';
+import 'package:PiliPlus/common/sliver_single_child_delegate.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
@@ -133,9 +134,12 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
   Widget replyList(LoadingState<List<ReplyInfo>?> loadingState) {
     switch (loadingState) {
       case Loading():
-        return SliverList.builder(
-          itemCount: 12,
-          itemBuilder: (context, index) => const VideoReplySkeleton(),
+        return const SliverPrototypeExtentList(
+          prototypeItem: VideoReplySkeleton(),
+          delegate: SliverSingleChildDelegate(
+            count: 12,
+            child: VideoReplySkeleton(),
+          ),
         );
       case Success(:final response):
         if (response != null && response.isNotEmpty) {
@@ -173,15 +177,13 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
                 return ReplyItemGrpc(
                   replyItem: response[index],
                   replyLevel: 1,
-                  replyReply: (replyItem, id) =>
-                      replyReply(context, replyItem, id),
+                  replyReply: replyReply,
                   onReply: controller.onReply,
                   onDelete: (item, subIndex) =>
                       controller.onRemove(index, item, subIndex),
                   upMid: controller.upMid,
                   onViewImage: hideFab,
-                  onCheckReply: (item) =>
-                      controller.onCheckReply(item, isManual: true),
+                  onCheckReply: controller.onCheckReply,
                   onToggleTop: (item) => controller.onToggleTop(
                     item,
                     index,
@@ -217,7 +219,7 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
     }
   }
 
-  void replyReply(BuildContext context, ReplyInfo replyItem, int? id) {
+  void replyReply(ReplyInfo replyItem, int? id) {
     EasyThrottle.throttle('replyReply', const Duration(milliseconds: 500), () {
       int oid = replyItem.oid.toInt();
       int rpid = replyItem.id.toInt();
