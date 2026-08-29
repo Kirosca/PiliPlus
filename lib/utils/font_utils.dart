@@ -1,5 +1,6 @@
 import 'dart:ffi';
 import 'dart:io' show Directory, File;
+import 'dart:ui' show loadFontFromList;
 
 import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/fontconfig.g.dart';
@@ -12,7 +13,6 @@ import 'package:ffi/ffi.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart'
     show kDebugMode, defaultTargetPlatform, debugPrint;
-import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:jni/jni.dart';
 import 'package:path/path.dart' as path;
@@ -22,7 +22,7 @@ abstract final class FontUtils {
   static final _fonts = <String>{};
   static bool _initialized = false;
 
-  static const _kFontExts = ['ttf', 'otf'];
+  static const _kFontExts = ['ttf', 'ttc', 'otf'];
   static final _kFontDir = path.join(appSupportDirPath, 'font');
   static final _loadedFonts = <String>{};
   static final customFonts = Pref.customAppFont;
@@ -48,6 +48,7 @@ abstract final class FontUtils {
 
   static Future<void> clearFonts() {
     customFonts.clear();
+    _loadedFonts.clear();
     final dir = Directory(_kFontDir);
     return Future.wait([
       if (dir.existsSync()) dir.delete(recursive: true),
@@ -68,8 +69,7 @@ abstract final class FontUtils {
     try {
       _loadedFonts.add(fontFamily);
       final bytes = await File(customFonts[fontFamily]!).readAsBytes();
-      // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
-      await FontLoader(fontFamily).loadFont(bytes, fontFamily);
+      await loadFontFromList(bytes, fontFamily: fontFamily);
     } catch (_) {}
   }
 

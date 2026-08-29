@@ -1,15 +1,17 @@
 import 'dart:io';
 
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
+import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
 import 'package:PiliPlus/utils/extension/box_ext.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
+import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/font_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -28,17 +30,40 @@ class _FontSettingPageState extends State<FontSettingPage> {
 
   late final List<String> _fonts;
   late ColorScheme colorScheme;
+  late bool isPortrait;
+  late ScrollController scrollController;
+
+  static const double _tileHeight = 45.0;
 
   @override
   void initState() {
     super.initState();
     _fonts = FontUtils.getFont().toList();
+    if (_selectedFont != null) {
+      final fonts = FontUtils.customFonts.keys.toList();
+      var index = fonts.indexWhere((e) => e == _selectedFont);
+      if (index == -1) {
+        index = _fonts.indexWhere((e) => e == _selectedFont);
+        if (index != -1) {
+          index += fonts.length;
+        }
+      }
+      if (index != -1) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (scrollController.hasClients) {
+            scrollController.jumpTo(index * _tileHeight);
+          }
+        });
+      }
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     colorScheme = ColorScheme.of(context);
+    isPortrait = MediaQuery.sizeOf(context).isPortrait;
+    scrollController = PrimaryScrollController.of(context);
   }
 
   void _saveFontSetting() {
@@ -53,20 +78,54 @@ class _FontSettingPageState extends State<FontSettingPage> {
       ..updateMyAppTheme();
   }
 
-  /// ref [Typography._withPlatform]
-  /// ref [Material]
-  static final String? _kFontFamily = (switch (defaultTargetPlatform) {
-    .iOS => Typography.whiteCupertino,
-    .android || .fuchsia => Typography.whiteMountainView,
-    .windows => Typography.whiteRedmond,
-    .macOS => Typography.whiteRedwoodCity,
-    .linux => Typography.whiteHelsinki,
-  }).bodyMedium?.fontFamily;
+  Future<void> _onFontChanged(String? value) async {
+    if (_selectedFont == value) return;
+    if (value != null && FontUtils.customFonts.containsKey(value)) {
+      await FontUtils.loadFontIfNecessary(value);
+      if (!mounted) return;
+    }
+    _selectedFont = value;
+    setState(() {});
+  }
+
+  Color? _tileColor(String? value) {
+    if (value == _selectedFont) {
+      return colorScheme.onInverseSurface;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final fonts = FontUtils.customFonts.keys.toList();
+    final customFonts = SliverList.builder(
+      itemCount: fonts.length,
+      itemBuilder: (context, index) {
+        final font = fonts[index];
+        return ListTile(
+          minTileHeight: _tileHeight,
+          tileColor: _tileColor(font),
+          onTap: () => _onFontChanged(font),
+          title: Text(font.split('/').last),
+          trailing: iconButton(
+            size: 38,
+            iconSize: 22,
+            tooltip: '移除',
+            onPressed: () {
+              FontUtils.removeFont(font);
+              if (_selectedFont == font) {
+                _selectedFont = null;
+              }
+              setState(() {});
+            },
+            icon: const Icon(Icons.clear),
+          ),
+        );
+      },
+    );
     return SimpleScaffold(
       appBar: AppBar(
+        title: const Text('App字体设置'),
         actions: [
           TextButton(
             onPressed: () => setState(() {
@@ -85,9 +144,11 @@ class _FontSettingPageState extends State<FontSettingPage> {
       ),
       body: SafeArea(
         top: false,
-        child: Column(
+        child: Flex(
+          direction: isPortrait ? .vertical : .horizontal,
           children: [
             Expanded(
+              flex: isPortrait ? 1 : 2,
               child: Center(
                 child: Text(
                   'abcdefghijklmnopqrstuvwxyz\n'
@@ -100,7 +161,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
                       : "我能吞下玻璃而不伤身体"}\n\n'
                   '注：部分字体可能无法应用',
                   style: TextStyle(
-                    fontFamily: _selectedFont ?? _kFontFamily,
+                    fontFamily: _selectedFont ?? '',
                     fontWeight: _selectedWeight == -1
                         ? null
                         : FontWeight.values[_selectedWeight],
@@ -109,168 +170,198 @@ class _FontSettingPageState extends State<FontSettingPage> {
                 ),
               ),
             ),
-            _buildItem(
-              Row(
-                mainAxisSize: .min,
+            isPortrait
+                ? Divider(
+                    height: 1,
+                    color: colorScheme.primary.withValues(alpha: 0.3),
+                  )
+                : VerticalDivider(
+                    width: 1,
+                    color: colorScheme.primary.withValues(alpha: 0.3),
+                  ),
+            Expanded(
+              child: Column(
                 children: [
-                  const Text('字体：', style: TextStyle(fontWeight: .bold)),
-                  Expanded(
-                    child: DropdownButton<String?>(
-                      focusColor: Colors.transparent,
-                      value: _selectedFont,
-                      isExpanded: true,
-                      underline: const SizedBox.shrink(),
-                      items: <DropdownMenuItem<String?>>[
-                        const DropdownMenuItem(value: null, child: Text('默认')),
-                        ...FontUtils.customFonts.keys.map(
-                          (font) => _DropdownMenuItem(
-                            value: font,
-                            onRemove: () {
-                              FontUtils.removeFont(font);
-                              if (_selectedFont == font) {
-                                _selectedFont = null;
-                              }
-                              setState(() {});
-                            },
-                            child: Text(font.split('/').last),
+                  Padding(
+                    padding: const .symmetric(horizontal: 16, vertical: 5),
+                    child: GestureDetector(
+                      behavior: .translucent,
+                      onTap: scrollController.jumpToTop,
+                      child: Row(
+                        children: [
+                          const Text(
+                            '字体：',
+                            style: TextStyle(fontWeight: .bold, fontSize: 15),
                           ),
-                        ),
-                        ..._fonts.map(
-                          (font) => DropdownMenuItem(
-                            value: font,
+                          Expanded(
                             child: Text(
-                              font,
-                              style: TextStyle(fontFamily: font),
+                              _selectedFont?.split('/').last ?? '默认',
+                              style: const TextStyle(fontSize: 15),
                             ),
                           ),
-                        ),
-                      ],
-                      onChanged: (value) async {
-                        if (value != null &&
-                            FontUtils.customFonts.containsKey(value)) {
-                          await FontUtils.loadFontIfNecessary(value);
-                          if (!mounted) return;
-                        }
-                        setState(
-                          () => _selectedFont == value
-                              ? _selectedFont = null
-                              : _selectedFont = value,
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const .only(left: 5),
-                    child: iconButton(
-                      size: 34,
-                      iconSize: 20,
-                      tooltip: '导入',
-                      context: context,
-                      onPressed: () async {
-                        SmartDialog.showLoading();
-                        final font = await FontUtils.pickFonts();
-                        SmartDialog.dismiss();
-                        if (!mounted) return;
-                        if (font != null) {
-                          _selectedFont = font;
-                          setState(() {});
-                        }
-                      },
-                      icon: const Icon(Icons.add),
-                    ),
-                  ),
-                  Padding(
-                    padding: const .only(left: 5),
-                    child: iconButton(
-                      size: 34,
-                      iconSize: 20,
-                      tooltip: '清空',
-                      context: context,
-                      onPressed: () async {
-                        SmartDialog.showLoading();
-                        _selectedFont = null;
-                        await FontUtils.clearFonts();
-                        SmartDialog.dismiss();
-                        if (!mounted) return;
-                        setState(() {});
-                      },
-                      icon: const Icon(Icons.clear_all),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _buildItem(
-              Row(
-                children: [
-                  const Text('字重：', style: TextStyle(fontWeight: .bold)),
-                  const SizedBox(
-                    width: 40,
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(text: '默认/\n'),
-                          TextSpan(
-                            text: 'w100',
-                            style: TextStyle(fontWeight: .w100),
+                          Padding(
+                            padding: const .only(left: 8),
+                            child: iconButton(
+                              size: 32,
+                              iconSize: 20,
+                              tooltip: '导入',
+                              context: context,
+                              onPressed: () async {
+                                SmartDialog.showLoading();
+                                final font = await FontUtils.pickFonts();
+                                SmartDialog.dismiss();
+                                if (!mounted) return;
+                                if (font != null) {
+                                  _selectedFont = font;
+                                  setState(() {});
+                                }
+                              },
+                              icon: const Icon(Icons.add),
+                            ),
+                          ),
+                          Padding(
+                            padding: const .only(left: 8),
+                            child: iconButton(
+                              size: 32,
+                              iconSize: 20,
+                              tooltip: '清空',
+                              context: context,
+                              onPressed: () => showConfirmDialog(
+                                context: context,
+                                title: const Text('确定清空已导入字体？'),
+                                onConfirm: () async {
+                                  SmartDialog.showLoading();
+                                  if (FontUtils.customFonts.keys.contains(
+                                    _selectedFont,
+                                  )) {
+                                    _selectedFont = null;
+                                  }
+                                  await FontUtils.clearFonts();
+                                  SmartDialog.dismiss();
+                                  if (!mounted) return;
+                                  setState(() {});
+                                },
+                              ),
+                              icon: const Icon(Icons.clear_all),
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ),
                   Expanded(
-                    child: Slider(
-                      padding: .zero,
-                      value: _selectedWeight.toDouble(),
-                      min: -1,
-                      max: 8,
-                      divisions: 9,
-                      label: _selectedWeight == -1
-                          ? '默认'
-                          : 'w${(_selectedWeight + 1) * 100}',
-                      onChanged: (value) {
-                        setState(() => _selectedWeight = value.toInt());
-                      },
+                    child: Material(
+                      type: .transparency,
+                      child: CustomScrollView(
+                        controller: scrollController,
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: ListTile(
+                              minTileHeight: _tileHeight,
+                              tileColor: _tileColor(null),
+                              onTap: () => _onFontChanged(null),
+                              title: const Text('默认'),
+                            ),
+                          ),
+                          customFonts,
+                          if (_fonts.isNotEmpty)
+                            SliverList.builder(
+                              itemCount: _fonts.length,
+                              itemBuilder: (context, index) {
+                                final font = _fonts[index];
+                                return ListTile(
+                                  minTileHeight: _tileHeight,
+                                  tileColor: _tileColor(font),
+                                  onTap: () => _onFontChanged(font),
+                                  title: Text(
+                                    font,
+                                    style: TextStyle(fontFamily: font),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(
-                    width: 50,
-                    child: Align(
-                      alignment: .centerRight,
-                      child: Text('w900', style: TextStyle(fontWeight: .w900)),
+                  _buildItem(
+                    Row(
+                      children: [
+                        const Text('字重：', style: TextStyle(fontWeight: .bold)),
+                        const SizedBox(
+                          width: 40,
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(text: '默认/\n'),
+                                TextSpan(
+                                  text: 'w100',
+                                  style: TextStyle(fontWeight: .w100),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Slider(
+                            padding: .zero,
+                            value: _selectedWeight.toDouble(),
+                            min: -1,
+                            max: 8,
+                            divisions: 9,
+                            label: _selectedWeight == -1
+                                ? '默认'
+                                : 'w${(_selectedWeight + 1) * 100}',
+                            onChanged: (value) {
+                              setState(() => _selectedWeight = value.toInt());
+                            },
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 50,
+                          child: Align(
+                            alignment: .centerRight,
+                            child: Text(
+                              'w900',
+                              style: TextStyle(fontWeight: .w900),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            _buildItem(
-              Row(
-                children: [
-                  const Text('字号：', style: TextStyle(fontWeight: .bold)),
-                  const SizedBox(
-                    width: 40,
-                    child: Text('小', style: TextStyle(fontSize: 11.9)),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      padding: .zero,
-                      value: _selectedScale,
-                      min: 0.85,
-                      max: 1.6,
-                      divisions: 15,
-                      secondaryTrackValue: 1,
-                      label: _selectedScale == 1.0
-                          ? '默认'
-                          : _selectedScale.toStringAsFixed(2),
-                      onChanged: (value) =>
-                          setState(() => _selectedScale = value.toPrecision(2)),
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 50,
-                    child: Align(
-                      alignment: .centerRight,
-                      child: Text('大', style: TextStyle(fontSize: 22.4)),
+                  _buildItem(
+                    Row(
+                      children: [
+                        const Text('字号：', style: TextStyle(fontWeight: .bold)),
+                        const SizedBox(
+                          width: 40,
+                          child: Text('小', style: TextStyle(fontSize: 11.9)),
+                        ),
+                        Expanded(
+                          child: Slider(
+                            padding: .zero,
+                            value: _selectedScale,
+                            min: 0.85,
+                            max: 1.6,
+                            divisions: 15,
+                            secondaryTrackValue: 1,
+                            label: _selectedScale == 1.0
+                                ? '默认'
+                                : _selectedScale.toStringAsFixed(2),
+                            onChanged: (value) => setState(
+                              () => _selectedScale = value.toPrecision(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 50,
+                          child: Align(
+                            alignment: .centerRight,
+                            child: Text('大', style: TextStyle(fontSize: 22.4)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -284,46 +375,13 @@ class _FontSettingPageState extends State<FontSettingPage> {
 
   Widget _buildItem(Widget child) {
     return Container(
-      padding: const .symmetric(horizontal: 20, vertical: 5),
+      padding: const .symmetric(horizontal: 16, vertical: 5),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(color: colorScheme.primary.withValues(alpha: 0.3)),
         ),
       ),
       child: child,
-    );
-  }
-}
-
-class _DropdownMenuItem<T> extends DropdownMenuItem<T> {
-  const _DropdownMenuItem({
-    super.key,
-    super.onTap,
-    super.value,
-    super.enabled,
-    super.alignment,
-    required super.child,
-    required this.onRemove,
-  });
-
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: super.build(context)),
-        iconButton(
-          size: 38,
-          iconSize: 22,
-          tooltip: '移除',
-          onPressed: () {
-            if (Get.routing.route is! GetPageRoute) Get.back();
-            onRemove();
-          },
-          icon: const Icon(Icons.clear),
-        ),
-      ],
     );
   }
 }
