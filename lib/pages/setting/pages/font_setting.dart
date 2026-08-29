@@ -65,17 +65,16 @@ class _FontSettingPageState extends State<FontSettingPage> {
   }
 
   Future<void> _saveFontSetting() async {
-    if (_appFont == FontUtils.appFont) return Get.back();
-
-    if (_appFont.isCustom) {
-      final bytes = _customFonts[_selectedFont];
-      assert(bytes != null);
-      FontUtils.fontFile.writeAsBytes(bytes!);
-    } else {
-      FontUtils.removeFontIfExists();
+    if (_appFont != FontUtils.appFont) {
+      if (_appFont.isCustom) {
+        final bytes = _customFonts[_selectedFont];
+        assert(bytes != null);
+        FontUtils.fontFile.writeAsBytes(bytes!);
+      } else {
+        FontUtils.removeFontIfExists();
+      }
+      FontUtils.appFont = _appFont;
     }
-
-    FontUtils.appFont = _appFont;
 
     await GStorage.setting.putAllNE({
       SettingBoxKey.appFont: _selectedFont,
