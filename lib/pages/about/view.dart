@@ -209,7 +209,7 @@ Commit Hash: ${BuildConfig.commitHash}''',
               color: Color(0xFFFD5674),
             ),
             title: const Text('支持作者 (爱发电)'),
-            subtitle: const Text('请作者喝杯奶茶，支持后续持续维护', style: subTitleStyle),
+            subtitle: Text('请作者喝杯奶茶，支持后续持续维护', style: subTitleStyle),
             trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
           ),
           ListTile(
