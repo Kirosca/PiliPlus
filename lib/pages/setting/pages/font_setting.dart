@@ -184,8 +184,8 @@ class _FontSettingPageState extends State<FontSettingPage> {
                   style: TextStyle(
                     fontFamily: _selectedFont ?? '',
                     fontWeight: _selectedWeight == -1
-                        ? null
-                        : FontWeight.values[_selectedWeight],
+                        ? .normal
+                        : .values[_selectedWeight],
                     fontSize: 14 * _selectedScale,
                   ),
                 ),

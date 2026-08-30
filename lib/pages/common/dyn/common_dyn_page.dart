@@ -177,7 +177,7 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
                 return ReplyItemGrpc(
                   replyItem: response[index],
                   replyLevel: 1,
-                  replyReply: replyReply,
+                  replyReply: (item, id) => replyReply(context, item, id),
                   onReply: controller.onReply,
                   onDelete: (item, subIndex) =>
                       controller.onRemove(index, item, subIndex),
@@ -219,7 +219,7 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
     }
   }
 
-  void replyReply(ReplyInfo replyItem, int? id) {
+  void replyReply(BuildContext context, ReplyInfo replyItem, int? id) {
     EasyThrottle.throttle('replyReply', const Duration(milliseconds: 500), () {
       int oid = replyItem.oid.toInt();
       int rpid = replyItem.id.toInt();

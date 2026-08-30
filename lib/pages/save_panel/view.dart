@@ -88,7 +88,7 @@ class _SavePanelState extends State<SavePanel> {
     if (_item case final ReplyInfo i) {
       _parseReply(i);
     } else if (_item case final DynamicItemModel i) {
-      _parseDyn(i);
+      uri = _parseDyn(i);
       if (kDebugMode) debugPrint(uri);
     }
   }
