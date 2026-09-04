@@ -25,7 +25,7 @@ class SearchVideoController
 
   late bool hasJump2Video = false;
 
-  final RxBool titleMatchOnly = true.obs;
+  final RxBool titleMatchOnly = false.obs;
 
   final Set<String> _seenVideoIds = <String>{};
   int _consecutiveEmptyCount = 0;
@@ -154,81 +154,85 @@ class SearchVideoController
       );
 
   List<SearchVideoItemModel> _applyCustomFilter(
-      List<SearchVideoItemModel> list) {
-    final rawKeywords =
-        keyword.trim().toLowerCase().split(RegExp(r'\s+'));
-    final includeKeywords = <String>[];
-    final excludeKeywords = <String>[];
-    final tagKeywords = <String>[];
-    final upKeywords = <String>[];
+    List<SearchVideoItemModel> list) {
+  final rawKeywords =
+      keyword.trim().toLowerCase().split(RegExp(r'\s+'));
+  final includeKeywords = <String>[];
+  final excludeKeywords = <String>[];
+  final tagKeywords = <String>[];
+  final upKeywords = <String>[];
 
-    for (final k in rawKeywords) {
-      if (k.startsWith('-') && k.length > 1) {
-        excludeKeywords.add(k.substring(1));
-      } else if (k.startsWith('#') && k.length > 1) {
-        tagKeywords.add(k.substring(1));
-      } else if (k.startsWith('@') && k.length > 1) {
-        upKeywords.add(k.substring(1));
-      } else if (k.isNotEmpty) {
-        includeKeywords.add(k);
+  for (final k in rawKeywords) {
+    if (k.startsWith('-') && k.length > 1) {
+      excludeKeywords.add(k.substring(1));
+    } else if (k.startsWith('#') && k.length > 1) {
+      tagKeywords.add(k.substring(1));
+    } else if (k.startsWith('@') && k.length > 1) {
+      upKeywords.add(k.substring(1));
+    } else if (k.isNotEmpty) {
+      includeKeywords.add(k);
+    }
+  }
+
+  final filteredList = list.where((item) {
+    final videoTitle = (item.title ?? '').toLowerCase();
+    final videoTags = (item.tag ?? '').toLowerCase();
+    final videoAuthor = (item.owner?.name ?? '').toLowerCase();
+
+    // 1. 负向排除词一票否决 (-)
+    if (excludeKeywords.isNotEmpty &&
+        excludeKeywords.any((k) => videoTitle.contains(k))) {
+      return false;
+    }
+
+    // 2. 正向普通词匹配
+    if (includeKeywords.isNotEmpty) {
+      // 开关打开：只匹配标题；开关关闭：标题或标签
+      final searchText = titleMatchOnly.value 
+          ? videoTitle 
+          : '$videoTitle $videoTags';
+          
+      if (!includeKeywords.every((k) => searchText.contains(k))) {
+        return false;
       }
     }
 
-    final filteredList = list.where((item) {
-      final videoTitle = (item.title ?? '').toLowerCase();
-      final videoTags = (item.tag ?? '').toLowerCase();
-      final videoAuthor = (item.owner?.name ?? '').toLowerCase();
+    // 3. Tag 标签过滤 (#)
+    if (tagKeywords.isNotEmpty &&
+        !tagKeywords.every((k) => videoTags.contains(k))) {
+      return false;
+    }
 
-      // 1. 负向排除词一票否决 (-)
-      if (excludeKeywords.isNotEmpty &&
-          excludeKeywords.any((k) => videoTitle.contains(k))) {
+    // 4. UP 主作者过滤 (@)
+    if (upKeywords.isNotEmpty &&
+        !upKeywords.any((k) => videoAuthor.contains(k))) {
+      return false;
+    }
+
+    final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
+        ? item.bvid
+        : (item.aid != null && item.aid != 0)
+            ? item.aid.toString()
+            : (item.seasonId != null && item.seasonId != 0)
+                ? 'season_${item.seasonId}'
+                : (item.roomId != null && item.roomId != 0)
+                    ? 'room_${item.roomId}'
+                    : (item.id != null && item.id != 0)
+                        ? item.id.toString()
+                        : null;
+
+    if (idKey != null && idKey.isNotEmpty) {
+      if (_seenVideoIds.contains(idKey)) {
         return false;
       }
+      _seenVideoIds.add(idKey);
+    }
 
-      // 2. 正向普通词全匹配 (AND)
-      if (titleMatchOnly.value &&
-          includeKeywords.isNotEmpty &&
-          !includeKeywords.every((k) => videoTitle.contains(k))) {
-        return false;
-      }
+    return true;
+  }).toList();
 
-      // 3. Tag 标签过滤 (#)
-      if (tagKeywords.isNotEmpty &&
-          !tagKeywords.every((k) => videoTags.contains(k))) {
-        return false;
-      }
-
-      // 4. UP 主作者过滤 (@)
-      if (upKeywords.isNotEmpty &&
-          !upKeywords.any((k) => videoAuthor.contains(k))) {
-        return false;
-      }
-
-      final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
-          ? item.bvid
-          : (item.aid != null && item.aid != 0)
-              ? item.aid.toString()
-              : (item.seasonId != null && item.seasonId != 0)
-                  ? 'season_${item.seasonId}'
-                  : (item.roomId != null && item.roomId != 0)
-                      ? 'room_${item.roomId}'
-                      : (item.id != null && item.id != 0)
-                          ? item.id.toString()
-                          : null;
-
-      if (idKey != null && idKey.isNotEmpty) {
-        if (_seenVideoIds.contains(idKey)) {
-          return false;
-        }
-        _seenVideoIds.add(idKey);
-      }
-
-      return true;
-    }).toList();
-
-    return filteredList;
-  }
-
+  return filteredList;
+}
   @override
   List<SearchVideoItemModel>? getDataList(SearchVideoData response) {
     final list = response.list;
@@ -362,7 +366,7 @@ class SearchVideoController
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                  children: [    //默认关闭，关闭下匹配标题和标签，打开则只匹配标签
                     const Text('仅匹配标题关键词', style: TextStyle(fontSize: 16)),
                     Obx(
                       () => Switch(
