@@ -32,40 +32,36 @@ abstract final class ThemeUtils {
     required bool isDynamic,
     bool isDark = false,
   }) {
-    final appFontWeight = Pref.appFontWeight.clamp(
-      -1,
-      FontWeight.values.length - 1,
-    );
-    final fontWeight = appFontWeight == -1
-        ? null
-        : FontWeight.values[appFontWeight];
+    final fontWeight = Pref.appFontWeight;
     final fontFamily = FontUtils.fontFamily;
-    final noCustomText = fontFamily == null && fontWeight == null;
-    late final textStyle = TextStyle(fontWeight: fontWeight);
-    ThemeData theme = ThemeData(
+
+    TextTheme? textTheme;
+    if (fontWeight != .normal) {
+      final textStyle = TextStyle(fontWeight: fontWeight);
+      textTheme = TextTheme(
+        displayLarge: textStyle,
+        displayMedium: textStyle,
+        displaySmall: textStyle,
+        headlineLarge: textStyle,
+        headlineMedium: textStyle,
+        headlineSmall: textStyle,
+        titleLarge: textStyle,
+        titleMedium: textStyle,
+        titleSmall: textStyle,
+        bodyLarge: textStyle,
+        bodyMedium: textStyle,
+        bodySmall: textStyle,
+        labelLarge: textStyle,
+        labelMedium: textStyle,
+        labelSmall: textStyle,
+      );
+    }
+
+    final theme = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: fontFamily,
-      textTheme: noCustomText
-          ? null
-          : TextTheme(
-              displayLarge: textStyle,
-              displayMedium: textStyle,
-              displaySmall: textStyle,
-              headlineLarge: textStyle,
-              headlineMedium: textStyle,
-              headlineSmall: textStyle,
-              titleLarge: textStyle,
-              titleMedium: textStyle,
-              titleSmall: textStyle,
-              bodyLarge: textStyle,
-              bodyMedium: textStyle,
-              bodySmall: textStyle,
-              labelLarge: textStyle,
-              labelMedium: textStyle,
-              labelSmall: textStyle,
-            ),
-      tabBarTheme: noCustomText ? null : TabBarThemeData(labelStyle: textStyle),
+      textTheme: textTheme,
       appBarTheme: AppBarTheme(
         elevation: 0,
         titleSpacing: 0,
