@@ -856,7 +856,7 @@ class VideoDetailController extends GetxController
 
     if (result case Success(:final response)) {
       data = response;
-      await _supplementVideoQualities();
+      if (data.dash != null) await _supplementVideoQualities();
 
       languages.value = data.language?.items;
       currLang.value = data.curLanguage;

@@ -68,21 +68,24 @@ class PlayUrlModel {
     }
   }
 
+  @pragma('vm:notify-debugger-on-exception')
   int get missingVideoQualityBelowHighest {
-    final video = dash!.video!;
-    final available = video.availableVideoQualities;
-    final highest = video.first.id;
-
     int best = -1;
-    for (final item in supportFormats!) {
-      final quality = item.quality;
-      if (quality != null &&
-          best < quality &&
-          quality < highest &&
-          !available.contains(quality)) {
-        best = quality;
+    try {
+      final video = dash!.video!;
+      final available = video.availableVideoQualities;
+      final highest = video.first.id;
+
+      for (final item in supportFormats!) {
+        final quality = item.quality;
+        if (quality != null &&
+            best < quality &&
+            quality < highest &&
+            !available.contains(quality)) {
+          best = quality;
+        }
       }
-    }
+    } catch (_) {}
     return best;
   }
 

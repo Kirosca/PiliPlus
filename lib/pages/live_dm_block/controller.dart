@@ -46,7 +46,7 @@ class LiveDmBlockController extends GetxController
   void _updateLiveRoomRules() {
     if (_isLoaded && _controller != null) {
       _controller!.updateBlockRules(
-        keywordList,
+        keywordList.rawValue,
         shieldUserList.map((e) => e.uid).toSet(),
       );
     }
