@@ -242,6 +242,7 @@ abstract final class SettingBoxKey {
       liveCdnUrl = 'liveCdnUrl',
       saveReply = 'saveReply',
       curatedFeedRules = 'curatedFeedRules',
+      curatedFeedLastData = 'curatedFeedLastData',
       appFont = 'appFont';
 }
 

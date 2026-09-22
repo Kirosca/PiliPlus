@@ -1,3 +1,4 @@
+import 'package:PiliPlus/models/curated/curated_video_item_model.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 
@@ -6,12 +7,14 @@ class CuratedFeedRule {
   String keyword;
   bool enabled;
   int order;
+  int currentPage;
 
   CuratedFeedRule({
     required this.id,
     required this.keyword,
     this.enabled = true,
     this.order = 0,
+    this.currentPage = 1,
   });
 
   Map<String, dynamic> toJson() => {
@@ -19,6 +22,7 @@ class CuratedFeedRule {
         'keyword': keyword,
         'enabled': enabled,
         'order': order,
+        'currentPage': currentPage,
       };
 
   factory CuratedFeedRule.fromJson(Map<String, dynamic> json) =>
@@ -28,6 +32,7 @@ class CuratedFeedRule {
         keyword: json['keyword'] as String? ?? '',
         enabled: json['enabled'] as bool? ?? true,
         order: json['order'] as int? ?? 0,
+        currentPage: json['currentPage'] as int? ?? 1,
       );
 }
 
@@ -66,6 +71,7 @@ class CuratedFeedStorage {
         keyword: entry.value,
         enabled: true,
         order: entry.key,
+        currentPage: 1,
       );
     }).toList();
     saveRules(defaults);
@@ -75,5 +81,41 @@ class CuratedFeedStorage {
   static Future<void> saveRules(List<CuratedFeedRule> rules) async {
     final list = rules.map((r) => r.toJson()).toList();
     await GStorage.setting.put(SettingBoxKey.curatedFeedRules, list);
+  }
+
+  static Future<void> updateRulePage(String ruleId, int page) async {
+    final rules = getRules();
+    bool found = false;
+    for (final rule in rules) {
+      if (rule.id == ruleId) {
+        rule.currentPage = page;
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      await saveRules(rules);
+    }
+  }
+
+  static Future<void> saveLastFeedItems(
+      List<CuratedVideoItemModel> items) async {
+    try {
+      final saveList = items.take(100).map((e) => e.toJson()).toList();
+      await GStorage.setting.put(SettingBoxKey.curatedFeedLastData, saveList);
+    } catch (_) {}
+  }
+
+  static List<CuratedVideoItemModel> getLastFeedItems() {
+    try {
+      final raw = GStorage.setting.get(SettingBoxKey.curatedFeedLastData);
+      if (raw is List && raw.isNotEmpty) {
+        return raw
+            .map((e) => CuratedVideoItemModel.fromJson(
+                Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
   }
 }

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/search/search_type.dart';
 import 'package:PiliPlus/models/curated/curated_feed_rule.dart';
+import 'package:PiliPlus/models/curated/curated_video_item_model.dart';
 import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/pages/common/common_controller.dart';
 import 'package:PiliPlus/pages/search_panel/video/controller.dart';
@@ -22,11 +23,14 @@ class _KeywordWorker {
       tag: 'curated_${rule.id}',
     );
     searchController.titleMatchOnly.value = true;
+    searchController.page = rule.currentPage;
   }
 
   void reset() {
     searchController.page = 1;
     searchController.isEnd = false;
+    rule.currentPage = 1;
+    CuratedFeedStorage.updateRulePage(rule.id, 1);
     buffer.clear();
   }
 
@@ -38,20 +42,27 @@ class _KeywordWorker {
         // 枯竭从头循环：重置到第 1 页
         searchController.page = 1;
         searchController.isEnd = false;
+        rule.currentPage = 1;
+        CuratedFeedStorage.updateRulePage(rule.id, 1);
       }
 
       final res = await searchController.customGetData();
       if (res case Success(:final response)) {
         final rawList = response.list;
         if (rawList == null || rawList.isEmpty) {
-          // B 站当前轮到底，标记并在下次循环
+          // B 站当前轮到底，重置并在下次循环
           searchController.isEnd = true;
+          searchController.page = 1;
+          rule.currentPage = 1;
+          CuratedFeedStorage.updateRulePage(rule.id, 1);
           break;
         }
 
         // 复用搜索模块四维过滤
         final filtered = searchController.getDataList(response);
         searchController.page++;
+        rule.currentPage = searchController.page;
+        CuratedFeedStorage.updateRulePage(rule.id, rule.currentPage);
 
         if (filtered != null && filtered.isNotEmpty) {
           buffer.addAll(filtered);
@@ -81,19 +92,37 @@ class CuratedFeedController extends GetxController
   final ScrollController scrollController = ScrollController();
 
   final List<_KeywordWorker> _workers = [];
-  final List<SearchVideoItemModel> items = [];
+  final List<CuratedVideoItemModel> items = [];
   final Set<String> _globalSeenIds = {};
+
+  int? lastRefreshAt;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  final Rx<LoadingState<List<SearchVideoItemModel>?>> loadingState =
-      Rx<LoadingState<List<SearchVideoItemModel>?>>(LoadingState.loading());
+  final Rx<LoadingState<List<CuratedVideoItemModel>?>> loadingState =
+      Rx<LoadingState<List<CuratedVideoItemModel>?>>(LoadingState.loading());
 
   @override
   void onInit() {
     super.onInit();
-    queryData(true);
+    _reloadWorkers();
+
+    final cached = CuratedFeedStorage.getLastFeedItems();
+    if (cached.isNotEmpty) {
+      items.addAll(cached);
+      for (final item in cached) {
+        final key = (item.bvid != null && item.bvid!.isNotEmpty)
+            ? item.bvid!
+            : (item.aid != null && item.aid != 0)
+                ? item.aid.toString()
+                : '';
+        if (key.isNotEmpty) _globalSeenIds.add(key);
+      }
+      loadingState.value = Success(List<CuratedVideoItemModel>.from(items));
+    } else {
+      onLoadMore();
+    }
   }
 
   @override
@@ -111,79 +140,126 @@ class CuratedFeedController extends GetxController
     }
   }
 
+  Future<List<CuratedVideoItemModel>> _fetchBatch() async {
+    if (_workers.isEmpty) return [];
+    const int itemsPerRule = 3;
+    final List<CuratedVideoItemModel> batch = [];
+
+    for (final worker in _workers) {
+      if (worker.buffer.length < itemsPerRule) {
+        await worker.replenish(itemsPerRule);
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      int count = 0;
+      while (worker.buffer.isNotEmpty && count < itemsPerRule) {
+        final item = worker.buffer.removeAt(0);
+        final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
+            ? item.bvid!
+            : (item.aid != null && item.aid != 0)
+                ? item.aid.toString()
+                : item.id?.toString() ?? '';
+
+        if (idKey.isNotEmpty && _globalSeenIds.contains(idKey)) {
+          continue;
+        }
+        if (idKey.isNotEmpty) {
+          _globalSeenIds.add(idKey);
+        }
+        batch.add(CuratedVideoItemModel.fromSearchItem(
+          item,
+          worker.rule.keyword,
+        ));
+        count++;
+      }
+    }
+
+    batch.shuffle(math.Random());
+    return batch;
+  }
+
   @override
   Future<void> onRefresh() async {
-    await queryData(true);
-  }
-
-  Future<void> onLoadMore() async {
-    if (_isLoading) return;
-    await queryData(false);
-  }
-
-  Future<void> queryData([bool isRefresh = false]) async {
     if (_isLoading) return;
     _isLoading = true;
 
-    if (isRefresh) {
-      loadingState.value = LoadingState.loading();
-      items.clear();
-      _globalSeenIds.clear();
-      _reloadWorkers();
-      for (final w in _workers) {
-        w.reset();
-      }
-    }
-
-    if (_workers.isEmpty) {
-      _isLoading = false;
-      loadingState.value = const Success(<SearchVideoItemModel>[]);
-      return;
-    }
-
     try {
-      // 每次按平分比例从每个 worker 中提取 itemsPerRule 个视频
-      const int itemsPerRule = 3;
-      final List<SearchVideoItemModel> batch = [];
-
-      for (final worker in _workers) {
-        if (worker.buffer.length < itemsPerRule) {
-          await worker.replenish(itemsPerRule);
-          // 复用搜索模块 100ms 拟人化呼吸防频控
-          await Future.delayed(const Duration(milliseconds: 100));
-        }
-
-        int count = 0;
-        while (worker.buffer.isNotEmpty && count < itemsPerRule) {
-          final item = worker.buffer.removeAt(0);
-          final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
-              ? item.bvid!
-              : (item.aid != null && item.aid != 0)
-                  ? item.aid.toString()
-                  : item.id?.toString() ?? '';
-
-          if (idKey.isNotEmpty && _globalSeenIds.contains(idKey)) {
-            continue;
-          }
-          if (idKey.isNotEmpty) {
-            _globalSeenIds.add(idKey);
-          }
-          batch.add(item);
-          count++;
-        }
+      if (_workers.isEmpty) {
+        _reloadWorkers();
       }
-
-      // 将本批次平分收集到的视频进行混排打乱
-      batch.shuffle(math.Random());
-      items.addAll(batch);
-
-      loadingState.value = Success(List<SearchVideoItemModel>.from(items));
+      final newBatch = await _fetchBatch();
+      if (newBatch.isNotEmpty) {
+        items.insertAll(0, newBatch);
+        lastRefreshAt = newBatch.length;
+        if (items.length > 200) {
+          items.removeRange(200, items.length);
+        }
+        CuratedFeedStorage.saveLastFeedItems(items);
+        loadingState.value = Success(List<CuratedVideoItemModel>.from(items));
+      } else if (items.isEmpty) {
+        loadingState.value = const Success(<CuratedVideoItemModel>[]);
+      }
     } catch (e) {
       if (items.isEmpty) {
         loadingState.value = Error(e.toString());
       }
     } finally {
       _isLoading = false;
+    }
+  }
+
+  Future<void> onLoadMore() async {
+    if (_isLoading) return;
+    _isLoading = true;
+
+    try {
+      if (_workers.isEmpty) {
+        _reloadWorkers();
+      }
+      final newBatch = await _fetchBatch();
+      if (newBatch.isNotEmpty) {
+        items.addAll(newBatch);
+        if (items.length > 200) {
+          final removeCount = items.length - 200;
+          items.removeRange(0, removeCount);
+          if (lastRefreshAt != null) {
+            lastRefreshAt = math.max(0, lastRefreshAt! - removeCount);
+          }
+        }
+        CuratedFeedStorage.saveLastFeedItems(items);
+        loadingState.value = Success(List<CuratedVideoItemModel>.from(items));
+      } else if (items.isEmpty) {
+        loadingState.value = const Success(<CuratedVideoItemModel>[]);
+      }
+    } catch (e) {
+      if (items.isEmpty) {
+        loadingState.value = Error(e.toString());
+      }
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> onReload() async {
+    items.clear();
+    _globalSeenIds.clear();
+    lastRefreshAt = null;
+    loadingState.value = LoadingState.loading();
+    _reloadWorkers();
+    for (final w in _workers) {
+      w.reset();
+    }
+    await onLoadMore();
+  }
+
+  void removeItem(int index) {
+    if (index >= 0 && index < items.length) {
+      if (lastRefreshAt != null && index < lastRefreshAt!) {
+        lastRefreshAt = lastRefreshAt! - 1;
+      }
+      items.removeAt(index);
+      CuratedFeedStorage.saveLastFeedItems(items);
+      loadingState.value = Success(List<CuratedVideoItemModel>.from(items));
     }
   }
 }

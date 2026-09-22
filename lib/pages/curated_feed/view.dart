@@ -1,13 +1,16 @@
+import 'package:PiliPlus/common/skeleton/video_card_v.dart';
+import 'package:PiliPlus/common/sliver_single_child_delegate.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
-import 'package:PiliPlus/common/widgets/video_card/video_card_h.dart';
+import 'package:PiliPlus/common/widgets/video_card/video_card_v.dart';
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/models/search/result.dart';
+import 'package:PiliPlus/models/curated/curated_video_item_model.dart';
 import 'package:PiliPlus/pages/curated_feed/controller.dart';
-import 'package:PiliPlus/utils/grid.dart';
-import 'package:get/get.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
+import 'package:PiliPlus/utils/grid.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
 class CuratedFeedPage extends StatefulWidget {
@@ -18,7 +21,7 @@ class CuratedFeedPage extends StatefulWidget {
 }
 
 class _CuratedFeedPageState extends State<CuratedFeedPage>
-    with AutomaticKeepAliveClientMixin, GridMixin {
+    with AutomaticKeepAliveClientMixin {
   final controller = Get.putOrFind(CuratedFeedController.new);
 
   @override
@@ -56,69 +59,80 @@ class _CuratedFeedPageState extends State<CuratedFeedPage>
     );
   }
 
+  late final gridDelegate = SliverGridDelegateWithExtentAndRatio(
+    mainAxisSpacing: Style.cardSpace,
+    crossAxisSpacing: Style.cardSpace,
+    maxCrossAxisExtent: Pref.recommendCardWidth,
+    childAspectRatio: Style.aspectRatio,
+    mainAxisExtent: MediaQuery.textScalerOf(context).scale(90),
+  );
+
   Widget _buildBody(
     ColorScheme colorScheme,
-    LoadingState<List<SearchVideoItemModel>?> loadingState,
+    LoadingState<List<CuratedVideoItemModel>?> loadingState,
   ) {
     return switch (loadingState) {
-      Loading() => gridSkeleton,
+      Loading() => _buildSkeleton,
       Success(:final response) =>
         response != null && response.isNotEmpty
             ? SliverGrid.builder(
                 gridDelegate: gridDelegate,
                 itemBuilder: (context, index) {
-                  if (index >= response.length - 2) {
+                  if (index == response.length - 1) {
                     controller.onLoadMore();
                   }
-                  return VideoCardH(
-                    videoItem: response[index],
-                    onRemove: () {
-                      controller.items.removeAt(index);
-                      controller.loadingState.value =
-                          Success(List.from(controller.items));
-                    },
-                  );
+                  if (controller.lastRefreshAt != null) {
+                    if (controller.lastRefreshAt == index) {
+                      return GestureDetector(
+                        onTap: () => controller
+                          ..animateToTop()
+                          ..onRefresh(),
+                        child: Card(
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const .symmetric(horizontal: 10),
+                            child: Text(
+                              '上次看到这里\n点击刷新',
+                              textAlign: .center,
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    final actualIndex = index > controller.lastRefreshAt!
+                        ? index - 1
+                        : index;
+                    return VideoCardV(
+                      videoItem: response[actualIndex],
+                      onRemove: () => controller.removeItem(actualIndex),
+                    );
+                  } else {
+                    return VideoCardV(
+                      videoItem: response[index],
+                      onRemove: () => controller.removeItem(index),
+                    );
+                  }
                 },
-                itemCount: response.length,
+                itemCount: controller.lastRefreshAt != null
+                    ? response.length + 1
+                    : response.length,
               )
-            : SliverToBoxAdapter(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 80),
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.auto_awesome_motion_outlined,
-                        size: 48,
-                        color: colorScheme.outline,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '暂无符合规则的选推视频',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '请前往【设置】->【选推规则管理】添加或调整规则',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: colorScheme.outline,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-      Error(:final errMsg) => SliverToBoxAdapter(
-          child: HttpError(
-            errMsg: errMsg,
-            onReload: controller.onRefresh,
-          ),
+            : HttpError(onReload: controller.onReload),
+      Error(:final errMsg) => HttpError(
+          errMsg: errMsg,
+          onReload: controller.onReload,
         ),
     };
   }
+
+  Widget get _buildSkeleton => SliverGrid(
+        gridDelegate: gridDelegate,
+        delegate: const SliverSingleChildDelegate(
+          count: 10,
+          child: VideoCardVSkeleton(),
+        ),
+      );
 }
