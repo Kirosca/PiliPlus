@@ -131,6 +131,7 @@ class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final viewPadding = MediaQuery.viewPaddingOf(context);
 
     return SimpleScaffold(
       appBar: AppBar(
@@ -143,10 +144,16 @@ class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
           const SizedBox(width: 8),
         ],
       ),
-      fab: FloatingActionButton.extended(
-        onPressed: () => _addOrEditRule(),
-        icon: const Icon(Icons.add),
-        label: const Text('添加规则'),
+      fab: Padding(
+        padding: EdgeInsets.only(
+          right: kFloatingActionButtonMargin + viewPadding.right,
+          bottom: kFloatingActionButtonMargin + viewPadding.bottom,
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () => _addOrEditRule(),
+          icon: const Icon(Icons.add),
+          label: const Text('添加规则'),
+        ),
       ),
       body: CustomScrollView(
         slivers: [
@@ -240,8 +247,8 @@ class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
               );
             },
           ),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 80),
+          SliverToBoxAdapter(
+            child: SizedBox(height: 80 + viewPadding.bottom),
           ),
         ],
       ),
