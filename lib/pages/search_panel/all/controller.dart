@@ -2,6 +2,8 @@ import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/models/search/search_esports.dart';
 import 'package:PiliPlus/pages/search_panel/video/controller.dart';
+import 'package:PiliPlus/utils/global_data.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 
 class SearchAllController extends SearchVideoController with SearchVideoMixin {
   SearchAllController({
@@ -20,7 +22,12 @@ class SearchAllController extends SearchVideoController with SearchVideoMixin {
     final res = response.response;
     if (isRefresh) {
       searchType_ = .video;
-      searchUser = res.searchUser;
+      searchUser = res.searchUser
+          ?.where((u) =>
+              u.mid == null ||
+              (!GlobalData().blackMids.contains(u.mid) &&
+                  !Pref.blackMids.contains(u.mid)))
+          .toList();
       searchMedia = res.searchMedia;
       searchActivity = res.searchActivity;
       searchEsports = res.searchEsports;

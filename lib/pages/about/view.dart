@@ -210,7 +210,7 @@ Commit Hash: ${BuildConfig.commitHash}''',
               color: Color(0xFFFD5674),
             ),
             title: const Text('支持作者'),
-            subtitle: Text('如果觉得好用，欢迎前往爱发电投喂作者～', style: subTitleStyle),
+            subtitle: Text('如果觉得好用，欢迎前往爱发电投喂作者', style: subTitleStyle),
             trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
           ),
           ListTile(

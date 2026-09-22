@@ -8,8 +8,9 @@ import 'package:PiliPlus/pages/search/widgets/search_text.dart';
 import 'package:PiliPlus/pages/search_panel/controller.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
-import 'package:PiliPlus/utils/extension/context_ext.dart';
+import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -211,6 +212,14 @@ class SearchVideoController
     }
 
     final filteredList = list.where((item) {
+      // 0. 黑名单 UP 主一票否决
+      final authorMid = item.owner?.mid;
+      if (authorMid != null &&
+          (GlobalData().blackMids.contains(authorMid) ||
+              Pref.blackMids.contains(authorMid))) {
+        return false;
+      }
+
       final videoTitle = (item.title ?? '').toLowerCase();
       final videoTags = (item.tag ?? '').toLowerCase();
       final videoAuthor = (item.owner?.name ?? '').toLowerCase();
