@@ -363,12 +363,6 @@ List<SettingsModel> get styleSettings => [
     leading: const Icon(Icons.toc_outlined),
   ),
   NormalModel(
-    onTap: (context, setState) => Get.toNamed('/curatedFeedSetting'),
-    title: '选推规则管理',
-    subtitle: '配置首页选推推荐词条、四维语法与平分规则',
-    leading: const Icon(Icons.auto_awesome_motion_outlined),
-  ),
-  NormalModel(
     onTap: (context, setState) => Get.toNamed(
       '/barSetting',
       arguments: {

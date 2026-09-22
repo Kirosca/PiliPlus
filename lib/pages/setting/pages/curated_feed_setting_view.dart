@@ -14,11 +14,20 @@ class CuratedFeedSettingPage extends StatefulWidget {
 
 class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
   List<CuratedFeedRule> rules = [];
+  bool _hasChanged = false;
 
   @override
   void initState() {
     super.initState();
     _loadRules();
+  }
+
+  @override
+  void dispose() {
+    if (_hasChanged && Get.isRegistered<CuratedFeedController>()) {
+      Get.find<CuratedFeedController>().markNeedRefresh();
+    }
+    super.dispose();
   }
 
   void _loadRules() {
@@ -27,13 +36,11 @@ class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
   }
 
   Future<void> _saveRules() async {
+    _hasChanged = true;
     for (int i = 0; i < rules.length; i++) {
       rules[i].order = i;
     }
     await CuratedFeedStorage.saveRules(rules);
-    if (Get.isRegistered<CuratedFeedController>()) {
-      Get.find<CuratedFeedController>().onRefresh();
-    }
   }
 
   void _addOrEditRule([CuratedFeedRule? existingRule]) {

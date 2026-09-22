@@ -27,6 +27,12 @@ class _CuratedFeedPageState extends State<CuratedFeedPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (controller.needRefresh) {
+      controller.needRefresh = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.onRefresh();
+      });
+    }
     final colorScheme = ColorScheme.of(context);
     return Container(
       clipBehavior: .hardEdge,

@@ -112,13 +112,19 @@ class _KeywordWorker {
 
   Future<void> replenish(int targetCount) async {
     int attempts = 0;
-    while (buffer.length < targetCount && attempts < 4) {
+    while (buffer.length < targetCount && attempts < 3) {
+      if (attempts > 0) {
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
       attempts++;
       final res = await SearchHttp.searchByType<SearchVideoData>(
         searchType: SearchType.video,
         keyword: cleanSearchKeyword,
         page: page,
-        onSuccess: (_) {},
+        gaiaVtoken: CuratedFeedController.gaiaVtoken,
+        onSuccess: (token) {
+          CuratedFeedController.gaiaVtoken = token;
+        },
       );
 
       if (res case Success(:final response)) {
@@ -139,6 +145,7 @@ class _KeywordWorker {
           break;
         }
       } else {
+        // 遭遇风控/网络异常，停止该 worker 的额外连续重试，防止反复弹窗
         break;
       }
     }
@@ -147,6 +154,13 @@ class _KeywordWorker {
 
 class CuratedFeedController extends GetxController
     with ScrollOrRefreshMixin {
+  static String? gaiaVtoken;
+  bool needRefresh = false;
+
+  void markNeedRefresh() {
+    needRefresh = true;
+  }
+
   @override
   final ScrollController scrollController = ScrollController();
 
@@ -218,8 +232,8 @@ class CuratedFeedController extends GetxController
       for (final worker in _workers) {
         if (worker.buffer.length < itemsPerRule) {
           await worker.replenish(itemsPerRule);
-          // 拟人化呼吸防频控
-          await Future.delayed(const Duration(milliseconds: 80));
+          // 拟人化呼吸防频控 (250ms)
+          await Future.delayed(const Duration(milliseconds: 250));
         }
 
         int count = 0;

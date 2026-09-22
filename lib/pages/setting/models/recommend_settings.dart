@@ -8,6 +8,12 @@ import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
 List<SettingsModel> get recommendSettings => [
+  NormalModel(
+    onTap: (context, setState) => Get.toNamed('/curatedFeedSetting'),
+    title: '选推规则管理',
+    subtitle: '配置首页选推推荐词条、四维语法与平分规则',
+    leading: const Icon(Icons.auto_awesome_motion_outlined),
+  ),
   const SwitchModel(
     title: '首页使用app端推荐',
     subtitle: '若web端推荐不太符合预期，可尝试切换至app端推荐',
