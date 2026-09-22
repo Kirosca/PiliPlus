@@ -57,6 +57,7 @@ import 'package:PiliPlus/pages/setting/pages/color_select.dart';
 import 'package:PiliPlus/pages/setting/pages/display_mode.dart';
 import 'package:PiliPlus/pages/setting/pages/font_setting.dart';
 import 'package:PiliPlus/pages/setting/pages/logs.dart';
+import 'package:PiliPlus/pages/setting/pages/curated_feed_setting_view.dart';
 import 'package:PiliPlus/pages/setting/pages/play_speed_set.dart';
 import 'package:PiliPlus/pages/setting/view.dart';
 import 'package:PiliPlus/pages/settings_search/view.dart';
@@ -156,6 +157,10 @@ class Routes {
     GetPage(name: '/dynTopic', page: () => const DynTopicPage()),
     GetPage(name: '/articleList', page: () => const ArticleListPage()),
     GetPage(name: '/barSetting', page: () => const BarSetPage()),
+    GetPage(
+      name: '/curatedFeedSetting',
+      page: () => const CuratedFeedSettingPage(),
+    ),
     GetPage(name: '/upowerRank', page: () => const UpowerRankPage()),
     GetPage(name: '/spaceSetting', page: () => const SpaceSettingPage()),
     GetPage(name: '/dynTopicRcmd', page: () => const DynTopicRcmdPage()),

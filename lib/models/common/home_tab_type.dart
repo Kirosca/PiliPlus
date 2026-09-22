@@ -1,5 +1,7 @@
 import 'package:PiliPlus/models/common/enum_with_label.dart';
 import 'package:PiliPlus/pages/common/common_controller.dart';
+import 'package:PiliPlus/pages/curated_feed/controller.dart';
+import 'package:PiliPlus/pages/curated_feed/view.dart';
 import 'package:PiliPlus/pages/hot/controller.dart';
 import 'package:PiliPlus/pages/hot/view.dart';
 import 'package:PiliPlus/pages/live/controller.dart';
@@ -13,7 +15,10 @@ import 'package:PiliPlus/pages/rcmd/view.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:PiliPlus/utils/extension/get_ext.dart';
+
 enum HomeTabType implements EnumWithLabel {
+  curated('选推'),
   live('直播'),
   rcmd('推荐'),
   hot('热门'),
@@ -27,6 +32,7 @@ enum HomeTabType implements EnumWithLabel {
   const HomeTabType(this.label);
 
   ScrollOrRefreshMixin Function() get ctr => switch (this) {
+    HomeTabType.curated => () => Get.putOrFind(CuratedFeedController.new),
     HomeTabType.live => Get.find<LiveController>,
     HomeTabType.rcmd => Get.find<RcmdController>,
     HomeTabType.hot => Get.find<HotController>,
@@ -36,6 +42,7 @@ enum HomeTabType implements EnumWithLabel {
   };
 
   Widget get page => switch (this) {
+    HomeTabType.curated => const CuratedFeedPage(),
     HomeTabType.live => const LivePage(),
     HomeTabType.rcmd => const RcmdPage(),
     HomeTabType.hot => const HotPage(),
