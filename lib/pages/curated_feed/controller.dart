@@ -2,150 +2,67 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/search.dart';
 import 'package:PiliPlus/models/common/search/search_type.dart';
 import 'package:PiliPlus/models/curated/curated_feed_rule.dart';
 import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/pages/common/common_controller.dart';
+import 'package:PiliPlus/pages/search_panel/video/controller.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
 class _KeywordWorker {
   final CuratedFeedRule rule;
-  int page = 1;
-  bool isEnd = false;
+  late final SearchVideoController searchController;
   final List<SearchVideoItemModel> buffer = [];
-  final Set<String> seenIds = {};
 
-  _KeywordWorker({required this.rule});
+  _KeywordWorker({required this.rule}) {
+    searchController = SearchVideoController(
+      keyword: rule.keyword,
+      searchType: SearchType.video,
+      tag: 'curated_${rule.id}',
+    );
+    searchController.titleMatchOnly.value = true;
+  }
 
   void reset() {
-    page = 1;
-    isEnd = false;
+    searchController.page = 1;
+    searchController.isEnd = false;
     buffer.clear();
-    seenIds.clear();
-  }
-
-  String get cleanSearchKeyword {
-    final rawList = rule.keyword.trim().split(RegExp(r'\s+'));
-    final searchTerms = <String>[];
-    for (final k in rawList) {
-      if (k.startsWith('-')) {
-        continue;
-      } else if (k.startsWith('@') || k.startsWith('#')) {
-        if (k.length > 1) searchTerms.add(k.substring(1));
-      } else if (k.isNotEmpty) {
-        searchTerms.add(k);
-      }
-    }
-    final result = searchTerms.join(' ');
-    return result.isEmpty ? rule.keyword : result;
-  }
-
-  List<SearchVideoItemModel> applyFilter(List<SearchVideoItemModel> list) {
-    final rawKeywords =
-        rule.keyword.trim().toLowerCase().split(RegExp(r'\s+'));
-    final includeKeywords = <String>[];
-    final excludeKeywords = <String>[];
-    final tagKeywords = <String>[];
-    final upKeywords = <String>[];
-
-    for (final k in rawKeywords) {
-      if (k.startsWith('-') && k.length > 1) {
-        excludeKeywords.add(k.substring(1));
-      } else if (k.startsWith('#') && k.length > 1) {
-        tagKeywords.add(k.substring(1));
-      } else if (k.startsWith('@') && k.length > 1) {
-        upKeywords.add(k.substring(1));
-      } else if (k.isNotEmpty) {
-        includeKeywords.add(k);
-      }
-    }
-
-    final filtered = list.where((item) {
-      final videoTitle = (item.title ?? '').toLowerCase();
-      final videoTags = (item.tag ?? '').toLowerCase();
-      final videoAuthor = (item.owner?.name ?? '').toLowerCase();
-
-      // 1. 负向排除词一票否决 (-)
-      if (excludeKeywords.isNotEmpty &&
-          excludeKeywords.any((k) => videoTitle.contains(k))) {
-        return false;
-      }
-
-      // 2. 正向普通词全匹配 (AND)
-      if (includeKeywords.isNotEmpty &&
-          !includeKeywords.every((k) => videoTitle.contains(k))) {
-        return false;
-      }
-
-      // 3. Tag 标签过滤 (#)
-      if (tagKeywords.isNotEmpty &&
-          !tagKeywords.every((k) => videoTags.contains(k))) {
-        return false;
-      }
-
-      // 4. UP 主作者过滤 (@)
-      if (upKeywords.isNotEmpty &&
-          !upKeywords.any((k) => videoAuthor.contains(k))) {
-        return false;
-      }
-
-      final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
-          ? item.bvid!
-          : (item.aid != null && item.aid != 0)
-              ? item.aid.toString()
-              : (item.id != null && item.id != 0)
-                  ? item.id.toString()
-                  : null;
-
-      if (idKey != null && idKey.isNotEmpty) {
-        if (seenIds.contains(idKey)) return false;
-        seenIds.add(idKey);
-      }
-
-      return true;
-    }).toList();
-
-    return filtered;
   }
 
   Future<void> replenish(int targetCount) async {
     int attempts = 0;
-    while (buffer.length < targetCount && attempts < 3) {
-      if (attempts > 0) {
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
+    while (buffer.length < targetCount && attempts < 4) {
       attempts++;
-      final res = await SearchHttp.searchByType<SearchVideoData>(
-        searchType: SearchType.video,
-        keyword: cleanSearchKeyword,
-        page: page,
-        gaiaVtoken: CuratedFeedController.gaiaVtoken,
-        onSuccess: (token) {
-          CuratedFeedController.gaiaVtoken = token;
-        },
-      );
+      if (searchController.isEnd) {
+        // 枯竭从头循环：重置到第 1 页
+        searchController.page = 1;
+        searchController.isEnd = false;
+      }
 
+      final res = await searchController.customGetData();
       if (res case Success(:final response)) {
-        final list = response.list;
-        if (list == null || list.isEmpty) {
-          // 该关键词见底，自动从第 1 页循环从头来
-          page = 1;
-          seenIds.clear();
-          isEnd = true;
+        final rawList = response.list;
+        if (rawList == null || rawList.isEmpty) {
+          // B 站当前轮到底，标记并在下次循环
+          searchController.isEnd = true;
           break;
         }
 
-        final filtered = applyFilter(list);
-        buffer.addAll(filtered);
-        page++;
+        // 复用搜索模块四维过滤
+        final filtered = searchController.getDataList(response);
+        searchController.page++;
 
-        if (buffer.length >= targetCount) {
-          break;
+        if (filtered != null && filtered.isNotEmpty) {
+          buffer.addAll(filtered);
+          if (buffer.length >= targetCount) {
+            break;
+          }
+        } else {
+          // 复用搜索控制器同款 100ms 拟人化呼吸防风控间隔
+          await Future.delayed(const Duration(milliseconds: 100));
         }
       } else {
-        // 遭遇风控/网络异常，停止该 worker 的额外连续重试，防止反复弹窗
         break;
       }
     }
@@ -154,7 +71,6 @@ class _KeywordWorker {
 
 class CuratedFeedController extends GetxController
     with ScrollOrRefreshMixin {
-  static String? gaiaVtoken;
   bool needRefresh = false;
 
   void markNeedRefresh() {
@@ -187,7 +103,8 @@ class CuratedFeedController extends GetxController
   }
 
   void _reloadWorkers() {
-    final rules = CuratedFeedStorage.getRules().where((r) => r.enabled).toList();
+    final rules =
+        CuratedFeedStorage.getRules().where((r) => r.enabled).toList();
     _workers.clear();
     for (final rule in rules) {
       _workers.add(_KeywordWorker(rule: rule));
@@ -232,8 +149,8 @@ class CuratedFeedController extends GetxController
       for (final worker in _workers) {
         if (worker.buffer.length < itemsPerRule) {
           await worker.replenish(itemsPerRule);
-          // 拟人化呼吸防频控 (250ms)
-          await Future.delayed(const Duration(milliseconds: 250));
+          // 复用搜索模块 100ms 拟人化呼吸防频控
+          await Future.delayed(const Duration(milliseconds: 100));
         }
 
         int count = 0;
