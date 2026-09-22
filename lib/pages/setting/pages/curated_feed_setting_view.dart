@@ -136,7 +136,7 @@ class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      fab: FloatingActionButton.extended(
         onPressed: () => _addOrEditRule(),
         icon: const Icon(Icons.add),
         label: const Text('添加规则'),

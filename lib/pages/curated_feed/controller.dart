@@ -118,6 +118,7 @@ class _KeywordWorker {
         searchType: SearchType.video,
         keyword: cleanSearchKeyword,
         page: page,
+        onSuccess: (_) {},
       );
 
       if (res case Success(:final response)) {
@@ -144,8 +145,11 @@ class _KeywordWorker {
   }
 }
 
-class CuratedFeedController extends CommonController
+class CuratedFeedController extends GetxController
     with ScrollOrRefreshMixin {
+  @override
+  final ScrollController scrollController = ScrollController();
+
   final List<_KeywordWorker> _workers = [];
   final List<SearchVideoItemModel> items = [];
   final Set<String> _globalSeenIds = {};
@@ -154,12 +158,18 @@ class CuratedFeedController extends CommonController
   bool get isLoading => _isLoading;
 
   final Rx<LoadingState<List<SearchVideoItemModel>?>> loadingState =
-      Rx<LoadingState<List<SearchVideoItemModel>?>>(Loading());
+      Rx<LoadingState<List<SearchVideoItemModel>?>>(LoadingState.loading());
 
   @override
   void onInit() {
     super.onInit();
-    queryData(isRefresh: true);
+    queryData(true);
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
   }
 
   void _reloadWorkers() {
@@ -172,20 +182,20 @@ class CuratedFeedController extends CommonController
 
   @override
   Future<void> onRefresh() async {
-    await queryData(isRefresh: true);
+    await queryData(true);
   }
 
   Future<void> onLoadMore() async {
     if (_isLoading) return;
-    await queryData(isRefresh: false);
+    await queryData(false);
   }
 
-  Future<void> queryData({bool isRefresh = false}) async {
+  Future<void> queryData([bool isRefresh = false]) async {
     if (_isLoading) return;
     _isLoading = true;
 
     if (isRefresh) {
-      loadingState.value = Loading();
+      loadingState.value = LoadingState.loading();
       items.clear();
       _globalSeenIds.clear();
       _reloadWorkers();
