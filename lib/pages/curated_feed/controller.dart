@@ -34,6 +34,16 @@ class _KeywordWorker {
     buffer.clear();
   }
 
+  static bool isClassroomVideo(SearchVideoItemModel item) {
+    if (item.isPugv == true) return true;
+    if (item.badge == '课堂') return true;
+    final url = (item.arcurl ?? '').toLowerCase();
+    if (url.contains('/cheese/') || url.contains('bilibili://cheese')) {
+      return true;
+    }
+    return false;
+  }
+
   Future<void> replenish(int targetCount) async {
     int attempts = 0;
     while (buffer.length < targetCount && attempts < 4) {
@@ -65,9 +75,16 @@ class _KeywordWorker {
         CuratedFeedStorage.updateRulePage(rule.id, rule.currentPage);
 
         if (filtered != null && filtered.isNotEmpty) {
-          buffer.addAll(filtered);
-          if (buffer.length >= targetCount) {
-            break;
+          // 选推专属额外筛选层：剔除课堂视频（PUGV / 芝士课堂）
+          final validList =
+              filtered.where((item) => !isClassroomVideo(item)).toList();
+          if (validList.isNotEmpty) {
+            buffer.addAll(validList);
+            if (buffer.length >= targetCount) {
+              break;
+            }
+          } else {
+            await Future.delayed(const Duration(milliseconds: 100));
           }
         } else {
           // 复用搜索控制器同款 100ms 拟人化呼吸防风控间隔
@@ -125,8 +142,12 @@ class CuratedFeedController extends GetxController
 
     final cached = CuratedFeedStorage.getLastFeedItems();
     if (cached.isNotEmpty) {
-      items.addAll(cached);
-      for (final item in cached) {
+      final validCached = cached.where((item) {
+        final uri = (item.uri ?? '').toLowerCase();
+        return !uri.contains('/cheese/') && !uri.contains('bilibili://cheese');
+      }).toList();
+      items.addAll(validCached);
+      for (final item in validCached) {
         final key = (item.bvid != null && item.bvid!.isNotEmpty)
             ? item.bvid!
             : (item.aid != null && item.aid != 0)
