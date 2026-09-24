@@ -9,6 +9,7 @@ import 'package:PiliPlus/pages/search_panel/controller.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
+import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -156,7 +157,7 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的搜索词（剥离 - 排除词，剥离 @ 与 # 前缀脱壳发送以获取最大候选池）
+  // 提取用于发送给 B 站 API 的搜索词（剥离 - 排除词，剥离 @ 与 # 前缀脱壳发送以获取最大候选池，简繁归一化）
   String get cleanSearchKeyword {
     final rawList = keyword.trim().split(RegExp(r'\s+'));
     final searchTerms = <String>[];
@@ -169,8 +170,8 @@ class SearchVideoController
         searchTerms.add(k);
       }
     }
-    final result = searchTerms.join(' ');
-    return result.isEmpty ? keyword : result;
+    final result = searchTerms.join(' ').toSimplified();
+    return result.isEmpty ? keyword.toSimplified() : result;
   }
 
   @override
@@ -194,7 +195,7 @@ class SearchVideoController
   List<SearchVideoItemModel> _applyCustomFilter(
       List<SearchVideoItemModel> list) {
     final rawKeywords =
-        keyword.trim().toLowerCase().split(RegExp(r'\s+'));
+        keyword.trim().toLowerCase().toSimplified().split(RegExp(r'\s+'));
     final includeKeywords = <String>[];
     final excludeKeywords = <String>[];
     final tagKeywords = <String>[];
@@ -221,9 +222,9 @@ class SearchVideoController
         return false;
       }
 
-      final videoTitle = (item.title ?? '').toLowerCase();
-      final videoTags = (item.tag ?? '').toLowerCase();
-      final videoAuthor = (item.owner?.name ?? '').toLowerCase();
+      final videoTitle = (item.title ?? '').toLowerCase().toSimplified();
+      final videoTags = (item.tag ?? '').toLowerCase().toSimplified();
+      final videoAuthor = (item.owner?.name ?? '').toLowerCase().toSimplified();
 
       // 1. 负向排除词一票否决 (-)
       if (excludeKeywords.isNotEmpty &&

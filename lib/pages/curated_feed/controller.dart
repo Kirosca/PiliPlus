@@ -8,6 +8,7 @@ import 'package:PiliPlus/models/curated/curated_video_item_model.dart';
 import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/pages/common/common_controller.dart';
 import 'package:PiliPlus/pages/search_panel/video/controller.dart';
+import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -47,17 +48,17 @@ class _KeywordWorker {
   static bool isChargingVideo(SearchVideoItemModel item) {
     if (item.isCharging == true) return true;
     if (item.badge == '充电专属') return true;
-    final title = item.title.toLowerCase();
+    final title = item.title.toLowerCase().toSimplified();
     if (title.contains('充电专属') ||
         title.contains('充电专享') ||
         title.contains('包月充电')) {
       return true;
     }
-    final tag = (item.tag ?? '').toLowerCase();
+    final tag = (item.tag ?? '').toLowerCase().toSimplified();
     if (tag.contains('充电专属') || tag.contains('充电专享')) {
       return true;
     }
-    final desc = (item.desc ?? '').toLowerCase();
+    final desc = (item.desc ?? '').toLowerCase().toSimplified();
     if (desc.contains('充电专属') || desc.contains('包月充电观看')) {
       return true;
     }
@@ -170,7 +171,7 @@ class CuratedFeedController extends GetxController
         if (uri.contains('/cheese/') || uri.contains('bilibili://cheese')) {
           return false;
         }
-        final title = item.title.toLowerCase();
+        final title = item.title.toLowerCase().toSimplified();
         if (title.contains('充电专属') ||
             title.contains('充电专享') ||
             title.contains('包月充电')) {
