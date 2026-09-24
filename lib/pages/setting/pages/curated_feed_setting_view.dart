@@ -24,8 +24,11 @@ class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
 
   @override
   void dispose() {
-    if (_hasChanged && Get.isRegistered<CuratedFeedController>()) {
-      Get.find<CuratedFeedController>().markNeedRefresh();
+    if (_hasChanged) {
+      CuratedFeedStorage.clearLastFeedItems();
+      if (Get.isRegistered<CuratedFeedController>()) {
+        Get.find<CuratedFeedController>().onRulesChanged();
+      }
     }
     super.dispose();
   }
@@ -59,7 +62,7 @@ class _CuratedFeedSettingPageState extends State<CuratedFeedSettingPage> {
                 controller: textController,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  hintText: '例: Flutter -测试 或 @嘤武罗 或 #以撒',
+                  hintText: '例: TED演讲 或 #余华 或 @影视飓风',
                   border: OutlineInputBorder(),
                 ),
               ),

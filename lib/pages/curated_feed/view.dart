@@ -30,10 +30,10 @@ class _CuratedFeedPageState extends State<CuratedFeedPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (controller.needRefresh) {
-      controller.needRefresh = false;
+    if (controller.needReload) {
+      controller.needReload = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.onRefresh();
+        controller.onReload();
       });
     }
     final colorScheme = ColorScheme.of(context);

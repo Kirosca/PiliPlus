@@ -82,10 +82,18 @@ class _KeywordWorker {
 
 class CuratedFeedController extends GetxController
     with ScrollOrRefreshMixin {
-  bool needRefresh = false;
+  bool needReload = false;
+  bool get needRefresh => needReload;
+  set needRefresh(bool v) => needReload = v;
 
-  void markNeedRefresh() {
-    needRefresh = true;
+  void markNeedRefresh() => markNeedReload();
+  void markNeedReload() {
+    needReload = true;
+  }
+
+  void onRulesChanged() {
+    needReload = false;
+    onReload();
   }
 
   @override
@@ -94,6 +102,7 @@ class CuratedFeedController extends GetxController
   final List<_KeywordWorker> _workers = [];
   final List<CuratedVideoItemModel> items = [];
   final Set<String> _globalSeenIds = {};
+  String _rulesFingerprint = '';
 
   int? lastRefreshAt;
 
@@ -102,6 +111,12 @@ class CuratedFeedController extends GetxController
 
   final Rx<LoadingState<List<CuratedVideoItemModel>?>> loadingState =
       Rx<LoadingState<List<CuratedVideoItemModel>?>>(LoadingState.loading());
+
+  String _calcRulesFingerprint(List<CuratedFeedRule> rules) {
+    return rules
+        .map((r) => '${r.id}:${r.keyword}:${r.enabled}:${r.order}')
+        .join(';');
+  }
 
   @override
   void onInit() {
@@ -134,46 +149,98 @@ class CuratedFeedController extends GetxController
   void _reloadWorkers() {
     final rules =
         CuratedFeedStorage.getRules().where((r) => r.enabled).toList();
+    _rulesFingerprint = _calcRulesFingerprint(rules);
     _workers.clear();
     for (final rule in rules) {
       _workers.add(_KeywordWorker(rule: rule));
     }
   }
 
+  String _getIdKey(SearchVideoItemModel item) {
+    return (item.bvid != null && item.bvid!.isNotEmpty)
+        ? item.bvid!
+        : (item.aid != null && item.aid != 0)
+            ? item.aid.toString()
+            : item.id?.toString() ?? '';
+  }
+
   Future<List<CuratedVideoItemModel>> _fetchBatch() async {
+    final currentRules =
+        CuratedFeedStorage.getRules().where((r) => r.enabled).toList();
+    final newFingerprint = _calcRulesFingerprint(currentRules);
+    if (newFingerprint != _rulesFingerprint) {
+      _reloadWorkers();
+    }
+
     if (_workers.isEmpty) return [];
-    const int itemsPerRule = 3;
-    final List<CuratedVideoItemModel> batch = [];
 
+    const int maxTotal = 21;
+    final int n = _workers.length;
+    final int baseQuota = maxTotal ~/ n;
+    final int minTargetPerWorker = math.max(1, baseQuota);
+
+    // 1. 各 Worker 先按启用规则平均分配：检查缓冲区并向 API 补仓
     for (final worker in _workers) {
-      if (worker.buffer.length < itemsPerRule) {
-        await worker.replenish(itemsPerRule);
+      if (worker.buffer.length < minTargetPerWorker) {
+        await worker.replenish(minTargetPerWorker);
         await Future.delayed(const Duration(milliseconds: 100));
-      }
-
-      int count = 0;
-      while (worker.buffer.isNotEmpty && count < itemsPerRule) {
-        final item = worker.buffer.removeAt(0);
-        final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
-            ? item.bvid!
-            : (item.aid != null && item.aid != 0)
-                ? item.aid.toString()
-                : item.id?.toString() ?? '';
-
-        if (idKey.isNotEmpty && _globalSeenIds.contains(idKey)) {
-          continue;
-        }
-        if (idKey.isNotEmpty) {
-          _globalSeenIds.add(idKey);
-        }
-        batch.add(CuratedVideoItemModel.fromSearchItem(
-          item,
-          worker.rule.keyword,
-        ));
-        count++;
       }
     }
 
+    final List<CuratedVideoItemModel> batch = [];
+
+    // 从每个 worker 中先提取最多 baseQuota 个（排重后）
+    if (baseQuota > 0) {
+      for (final worker in _workers) {
+        int count = 0;
+        while (worker.buffer.isNotEmpty && count < baseQuota) {
+          final item = worker.buffer.removeAt(0);
+          final idKey = _getIdKey(item);
+
+          if (idKey.isNotEmpty && _globalSeenIds.contains(idKey)) {
+            continue;
+          }
+          if (idKey.isNotEmpty) {
+            _globalSeenIds.add(idKey);
+          }
+          batch.add(CuratedVideoItemModel.fromSearchItem(
+            item,
+            worker.rule.keyword,
+          ));
+          count++;
+        }
+      }
+    }
+
+    // 2. 如果除不断（或某些规则出货不足有空位），余数按过滤后视频存量（worker.buffer.length）最大的顺位填充
+    // （不新搜索视频而是存量中填充，如果最大顺位填充不满则后位填充，以此类推）
+    int remainingSlots = maxTotal - batch.length;
+    if (remainingSlots > 0) {
+      final sortedWorkers = List<_KeywordWorker>.from(_workers)
+        ..sort((a, b) => b.buffer.length.compareTo(a.buffer.length));
+
+      for (final worker in sortedWorkers) {
+        if (remainingSlots <= 0) break;
+        while (worker.buffer.isNotEmpty && remainingSlots > 0) {
+          final item = worker.buffer.removeAt(0);
+          final idKey = _getIdKey(item);
+
+          if (idKey.isNotEmpty && _globalSeenIds.contains(idKey)) {
+            continue;
+          }
+          if (idKey.isNotEmpty) {
+            _globalSeenIds.add(idKey);
+          }
+          batch.add(CuratedVideoItemModel.fromSearchItem(
+            item,
+            worker.rule.keyword,
+          ));
+          remainingSlots--;
+        }
+      }
+    }
+
+    // 3. 随机打散交织
     batch.shuffle(math.Random());
     return batch;
   }
