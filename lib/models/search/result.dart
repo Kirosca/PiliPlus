@@ -182,6 +182,7 @@ class SearchVideoItemModel extends HorizontalVideoModel {
   String? arcurl;
   String? tag;
   int? ctime;
+  bool isCharging = false;
 
   @override
   int? get seasonId => aid;
@@ -201,18 +202,27 @@ class SearchVideoItemModel extends HorizontalVideoModel {
     duration = DurationUtils.parseDuration(json['duration']);
     owner = SearchOwner.fromJson(json);
     stat = SearchStat.fromJson(json);
-    switch (json['type']) {
-      case 'ketang':
-        badge = '课堂';
-        isPugv = true;
-      case 'live_room':
-        badge = '直播';
-        isLive = true;
-        roomId = json['roomid'];
-      default:
-        if (json['is_union_video'] == 1) {
-          badge = '合作';
-        }
+    if (json['is_charging_arc'] == true ||
+        json['is_charging_arc'] == 1 ||
+        json['badgepay'] == true ||
+        json['charging_pay'] != null ||
+        json['corner'] == '充电专属') {
+      badge = '充电专属';
+      isCharging = true;
+    } else {
+      switch (json['type']) {
+        case 'ketang':
+          badge = '课堂';
+          isPugv = true;
+        case 'live_room':
+          badge = '直播';
+          isLive = true;
+          roomId = json['roomid'];
+        default:
+          if (json['is_union_video'] == 1) {
+            badge = '合作';
+          }
+      }
     }
   }
 }

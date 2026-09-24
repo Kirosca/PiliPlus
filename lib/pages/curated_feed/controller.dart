@@ -44,6 +44,26 @@ class _KeywordWorker {
     return false;
   }
 
+  static bool isChargingVideo(SearchVideoItemModel item) {
+    if (item.isCharging == true) return true;
+    if (item.badge == '充电专属') return true;
+    final title = item.title.toLowerCase();
+    if (title.contains('充电专属') ||
+        title.contains('充电专享') ||
+        title.contains('包月充电')) {
+      return true;
+    }
+    final tag = (item.tag ?? '').toLowerCase();
+    if (tag.contains('充电专属') || tag.contains('充电专享')) {
+      return true;
+    }
+    final desc = (item.desc ?? '').toLowerCase();
+    if (desc.contains('充电专属') || desc.contains('包月充电观看')) {
+      return true;
+    }
+    return false;
+  }
+
   Future<void> replenish(int targetCount) async {
     int attempts = 0;
     while (buffer.length < targetCount && attempts < 4) {
@@ -75,9 +95,12 @@ class _KeywordWorker {
         CuratedFeedStorage.updateRulePage(rule.id, rule.currentPage);
 
         if (filtered != null && filtered.isNotEmpty) {
-          // 选推专属额外筛选层：剔除课堂视频（PUGV / 芝士课堂）
-          final validList =
-              filtered.where((item) => !isClassroomVideo(item)).toList();
+          // 选推专属额外筛选层：剔除课堂视频（PUGV）与充电视频（充电专属）
+          final validList = filtered.where((item) {
+            if (isClassroomVideo(item)) return false;
+            if (isChargingVideo(item)) return false;
+            return true;
+          }).toList();
           if (validList.isNotEmpty) {
             buffer.addAll(validList);
             if (buffer.length >= targetCount) {
@@ -144,7 +167,16 @@ class CuratedFeedController extends GetxController
     if (cached.isNotEmpty) {
       final validCached = cached.where((item) {
         final uri = (item.uri ?? '').toLowerCase();
-        return !uri.contains('/cheese/') && !uri.contains('bilibili://cheese');
+        if (uri.contains('/cheese/') || uri.contains('bilibili://cheese')) {
+          return false;
+        }
+        final title = item.title.toLowerCase();
+        if (title.contains('充电专属') ||
+            title.contains('充电专享') ||
+            title.contains('包月充电')) {
+          return false;
+        }
+        return true;
       }).toList();
       items.addAll(validCached);
       for (final item in validCached) {
