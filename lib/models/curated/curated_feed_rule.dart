@@ -136,7 +136,7 @@ class CuratedFeedStorage {
 
   static Future<void> clearLastFeedItems() async {
     try {
-      await GStorage.setting.remove(SettingBoxKey.curatedFeedLastData);
+      await GStorage.setting.delete(SettingBoxKey.curatedFeedLastData);
     } catch (_) {}
   }
 }
