@@ -101,7 +101,7 @@ abstract final class Update {
 
     _showDialog(
       testData,
-      isAuto: false,
+      isAuto: true,
       title: '🎉 发现新版本 (功能测试)',
     );
   }
@@ -299,7 +299,11 @@ abstract final class Update {
               TextButton(
                 onPressed: () {
                   SmartDialog.dismiss();
-                  GStorage.setting.put(SettingBoxKey.autoUpdate, false);
+                  if (title?.contains('测试') == true) {
+                    SmartDialog.showToast('测试提示：已模拟点击【不再提醒】');
+                  } else {
+                    GStorage.setting.put(SettingBoxKey.autoUpdate, false);
+                  }
                 },
                 child: Text(
                   '不再提醒',
