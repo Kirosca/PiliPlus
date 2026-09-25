@@ -9,6 +9,7 @@ import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/utils.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -115,16 +116,6 @@ abstract final class Update {
       animationType: SmartAnimationType.centerFade_otherSlide,
       builder: (context) {
         final colorScheme = ColorScheme.of(context);
-        Widget downloadBtn(String text, {String? ext}) => TextButton(
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          onPressed: () => onDownload(data, ext: ext),
-          child: Text(text),
-        );
-
         final rawBody = (data['body'] as String?) ?? '';
         final tagName = (data['tag_name'] as String?) ?? '';
         final releaseName = (data['name'] as String?) ?? '';
@@ -181,8 +172,177 @@ abstract final class Update {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                     ],
+
+                    // 1. GitHub 官方下载通道卡片
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.cloud_download_outlined,
+                            size: 20,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'GitHub 官方下载通道',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  Platform.isAndroid
+                                      ? '直链下载最新 APK 安装包'
+                                      : '官方源直接下载安装包',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: colorScheme.outline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (Platform.isWindows) ...[
+                            FilledButton.tonal(
+                              onPressed: () => onDownload(data, ext: 'zip'),
+                              child: const Text('zip'),
+                            ),
+                            const SizedBox(width: 4),
+                            FilledButton.tonal(
+                              onPressed: () => onDownload(data, ext: 'exe'),
+                              child: const Text('exe'),
+                            ),
+                          ] else if (Platform.isLinux) ...[
+                            FilledButton.tonal(
+                              onPressed: () => onDownload(data, ext: 'deb'),
+                              child: const Text('deb'),
+                            ),
+                            const SizedBox(width: 4),
+                            FilledButton.tonal(
+                              onPressed: () => onDownload(data, ext: 'rpm'),
+                              child: const Text('rpm'),
+                            ),
+                          ] else ...[
+                            FilledButton.tonal(
+                              onPressed: () => onDownload(data),
+                              child: Text(Platform.isAndroid ? '下载 APK' : '下载'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    // 2. Gitee 国内镜像高速下载卡片
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.bolt,
+                                size: 18,
+                                color: colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '国内高速下载通道 (Gitee)',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              InkWell(
+                                borderRadius: BorderRadius.circular(4),
+                                onTap: () => Utils.copyText(Constants.giteeReleasesUrl),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.copy,
+                                        size: 13,
+                                        color: colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '复制',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: colorScheme.primary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            Constants.giteeReleasesUrl,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.outline,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 32,
+                            child: FilledButton.tonalIcon(
+                              onPressed: () {
+                                SmartDialog.dismiss();
+                                PageUtils.launchURL(Constants.giteeReleasesUrl);
+                              },
+                              icon: const Icon(Icons.open_in_browser, size: 16),
+                              label: const Text(
+                                '前往 Gitee 镜像下载',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     // Markdown 渲染更新说明
                     _buildMarkdownBody(rawBody, colorScheme),
@@ -202,74 +362,28 @@ abstract final class Update {
               ),
             ),
           ),
-          actionsPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 10,
-          ),
           actions: [
-            Row(
-              children: [
-                if (isAuto)
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () {
-                      SmartDialog.dismiss();
-                      if (title?.contains('测试') == true) {
-                        SmartDialog.showToast('测试提示：已模拟点击【不再提醒】');
-                      } else {
-                        GStorage.setting.put(SettingBoxKey.autoUpdate, false);
-                      }
-                    },
-                    child: Text(
-                      '不再提醒',
-                      style: TextStyle(color: colorScheme.outline),
-                    ),
-                  ),
-                const Spacer(),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: SmartDialog.dismiss,
-                  child: Text(
-                    '取消',
-                    style: TextStyle(color: colorScheme.outline),
-                  ),
+            if (isAuto)
+              TextButton(
+                onPressed: () {
+                  SmartDialog.dismiss();
+                  if (title?.contains('测试') == true) {
+                    SmartDialog.showToast('测试提示：已模拟点击【不再提醒】');
+                  } else {
+                    GStorage.setting.put(SettingBoxKey.autoUpdate, false);
+                  }
+                },
+                child: Text(
+                  '不再提醒',
+                  style: TextStyle(color: colorScheme.outline),
                 ),
-                const SizedBox(width: 4),
-                if (Platform.isWindows) ...[
-                  downloadBtn('zip', ext: 'zip'),
-                  const SizedBox(width: 4),
-                  downloadBtn('exe', ext: 'exe'),
-                ] else if (Platform.isLinux) ...[
-                  downloadBtn('rpm', ext: 'rpm'),
-                  const SizedBox(width: 4),
-                  downloadBtn('deb', ext: 'deb'),
-                  const SizedBox(width: 4),
-                  downloadBtn('targz', ext: 'tar.gz'),
-                ] else ...[
-                  downloadBtn('GitHub'),
-                ],
-                const SizedBox(width: 4),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: () {
-                    SmartDialog.dismiss();
-                    PageUtils.launchURL(Constants.giteeReleasesUrl);
-                  },
-                  child: const Text('Gitee'),
-                ),
-              ],
+              ),
+            TextButton(
+              onPressed: SmartDialog.dismiss,
+              child: Text(
+                '取消',
+                style: TextStyle(color: colorScheme.outline),
+              ),
             ),
           ],
         );
