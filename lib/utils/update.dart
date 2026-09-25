@@ -9,7 +9,6 @@ import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
-import 'package:PiliPlus/utils/utils.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -179,102 +178,6 @@ abstract final class Update {
                       ),
                       const SizedBox(height: 10),
                     ],
-
-                    // 国内 Gitee 镜像高速下载卡片
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.bolt,
-                                size: 18,
-                                color: colorScheme.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  '国内高速下载通道 (Gitee)',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.onSurface,
-                                  ),
-                                ),
-                              ),
-                              InkWell(
-                                borderRadius: BorderRadius.circular(4),
-                                onTap: () => Utils.copyText(Constants.giteeReleasesUrl),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.copy,
-                                        size: 13,
-                                        color: colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        '复制',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: colorScheme.primary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          SelectableText(
-                            Constants.giteeReleasesUrl,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: colorScheme.outline,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 32,
-                            child: FilledButton.tonalIcon(
-                              onPressed: () {
-                                SmartDialog.dismiss();
-                                PageUtils.launchURL(Constants.giteeReleasesUrl);
-                              },
-                              icon: const Icon(Icons.open_in_browser, size: 16),
-                              label: const Text(
-                                '前往 Gitee 镜像下载',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
                     // Markdown 渲染更新说明
                     _buildMarkdownBody(rawBody, colorScheme),
