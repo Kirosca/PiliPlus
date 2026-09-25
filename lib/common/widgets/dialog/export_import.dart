@@ -210,6 +210,7 @@ Future<void> showImportExportDialog<T>(
   required ValueGetter<String> onExport,
   required FutureOr<void> Function(T json) onImport,
   required ValueGetter<String> localFileName,
+  bool enableInput = true,
 }) => showDialog(
   context: context,
   builder: (context) {
@@ -236,13 +237,14 @@ Future<void> showImportExportDialog<T>(
           height: 1,
           color: ColorScheme.of(context).outline.withValues(alpha: 0.1),
         ),
-        DialogOption(
-          child: const Text('输入', style: style),
-          onPressed: () {
-            Get.back();
-            importFromInput<T>(context, title: title, onImport: onImport);
-          },
-        ),
+        if (enableInput)
+          DialogOption(
+            child: const Text('输入', style: style),
+            onPressed: () {
+              Get.back();
+              importFromInput<T>(context, title: title, onImport: onImport);
+            },
+          ),
         DialogOption(
           child: const Text('从剪贴板导入', style: style),
           onPressed: () {

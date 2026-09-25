@@ -1,6 +1,8 @@
 import 'package:PiliPlus/bili_feed/model/bili_feed_rule.dart';
 import 'package:PiliPlus/bili_feed/page/bili_feed_controller.dart';
+import 'package:PiliPlus/common/widgets/dialog/export_import.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -130,6 +132,51 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
     SmartDialog.showToast('已重置为默认规则');
   }
 
+  void _showImportExport() {
+    showImportExportDialog<dynamic>(
+      context,
+      title: '选推规则',
+      enableInput: false,
+      localFileName: () => 'curated_feed_rules',
+      onExport: () => Utils.jsonEncoder.convert(
+        rules.map((r) => r.toJson()).toList(),
+      ),
+      onImport: (dynamic json) async {
+        final List list;
+        if (json is List) {
+          list = json;
+        } else if (json is Map && json['curatedFeedRules'] is List) {
+          list = json['curatedFeedRules'] as List;
+        } else if (json is Map && json['rules'] is List) {
+          list = json['rules'] as List;
+        } else {
+          throw '数据格式错误，须为规则数组';
+        }
+        final newRules = <BiliFeedRule>[];
+        for (int i = 0; i < list.length; i++) {
+          final item = list[i];
+          if (item is Map) {
+            final rule = BiliFeedRule.fromJson(Map<String, dynamic>.from(item));
+            rule.order = i;
+            newRules.add(rule);
+          } else if (item is String && item.trim().isNotEmpty) {
+            newRules.add(BiliFeedRule(
+              id: '${DateTime.now().microsecondsSinceEpoch}_$i',
+              keyword: item.trim(),
+              order: i,
+            ));
+          }
+        }
+        if (newRules.isEmpty) {
+          throw '未找到有效的选推规则';
+        }
+        rules = newRules;
+        await _saveRules();
+        setState(() {});
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -140,6 +187,11 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
       appBar: AppBar(
         title: const Text('选推规则管理'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.import_export_outlined),
+            tooltip: '导入/导出规则',
+            onPressed: _showImportExport,
+          ),
           TextButton(
             onPressed: _resetDefaults,
             child: const Text('重置默认'),
