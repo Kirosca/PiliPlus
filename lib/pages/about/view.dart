@@ -140,10 +140,10 @@ class _AboutPageState extends State<AboutPage> {
           ),
           ListTile(
             onTap: () => Update.checkUpdate(false),
-            onLongPress: () => Utils.copyText(currentVersion),
+            onLongPress: () => Update.showTestUpdateDialog(),
             onSecondaryTap: PlatformUtils.isMobile
                 ? null
-                : () => Utils.copyText(currentVersion),
+                : () => Update.showTestUpdateDialog(),
             title: const Text('当前版本'),
             leading: const Icon(Icons.commit_outlined),
             trailing: Text(
