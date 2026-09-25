@@ -184,7 +184,7 @@ abstract final class Update {
                         '${Constants.sourceCodeUrl}/commits/main',
                       ),
                       child: Text(
-                        "点此查看完整更新(即commit)内容",
+                        "点击查看完整更新(commit)内容",
                         style: TextStyle(color: colorScheme.primary),
                       ),
                     ),
