@@ -145,10 +145,13 @@ abstract final class BiliFilterEngine {
   static bool isClassroomVideo(dynamic item) {
     String? uri;
     if (item is SearchVideoItemModel) {
-      uri = item.uri;
+      if (item.badge == '课堂' || item.isPugv == true) {
+        return true;
+      }
+      uri = item.arcurl;
     } else {
       try {
-        uri = (item.uri as String?);
+        uri = (item as dynamic).uri as String?;
       } catch (_) {}
     }
     final lowerUri = (uri ?? '').toLowerCase();
