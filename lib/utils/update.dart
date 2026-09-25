@@ -116,6 +116,11 @@ abstract final class Update {
       builder: (context) {
         final colorScheme = ColorScheme.of(context);
         Widget downloadBtn(String text, {String? ext}) => TextButton(
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
           onPressed: () => onDownload(data, ext: ext),
           child: Text(text),
         );
@@ -197,45 +202,74 @@ abstract final class Update {
               ),
             ),
           ),
+          actionsPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 10,
+          ),
           actions: [
-            if (isAuto)
-              TextButton(
-                onPressed: () {
-                  SmartDialog.dismiss();
-                  if (title?.contains('测试') == true) {
-                    SmartDialog.showToast('测试提示：已模拟点击【不再提醒】');
-                  } else {
-                    GStorage.setting.put(SettingBoxKey.autoUpdate, false);
-                  }
-                },
-                child: Text(
-                  '不再提醒',
-                  style: TextStyle(color: colorScheme.outline),
+            Row(
+              children: [
+                if (isAuto)
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () {
+                      SmartDialog.dismiss();
+                      if (title?.contains('测试') == true) {
+                        SmartDialog.showToast('测试提示：已模拟点击【不再提醒】');
+                      } else {
+                        GStorage.setting.put(SettingBoxKey.autoUpdate, false);
+                      }
+                    },
+                    child: Text(
+                      '不再提醒',
+                      style: TextStyle(color: colorScheme.outline),
+                    ),
+                  ),
+                const Spacer(),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: SmartDialog.dismiss,
+                  child: Text(
+                    '取消',
+                    style: TextStyle(color: colorScheme.outline),
+                  ),
                 ),
-              ),
-            TextButton(
-              onPressed: SmartDialog.dismiss,
-              child: Text(
-                '取消',
-                style: TextStyle(color: colorScheme.outline),
-              ),
-            ),
-            if (Platform.isWindows) ...[
-              downloadBtn('zip', ext: 'zip'),
-              downloadBtn('exe', ext: 'exe'),
-            ] else if (Platform.isLinux) ...[
-              downloadBtn('rpm', ext: 'rpm'),
-              downloadBtn('deb', ext: 'deb'),
-              downloadBtn('targz', ext: 'tar.gz'),
-            ] else ...[
-              downloadBtn('GitHub'),
-            ],
-            TextButton(
-              onPressed: () {
-                SmartDialog.dismiss();
-                PageUtils.launchURL(Constants.giteeReleasesUrl);
-              },
-              child: const Text('Gitee'),
+                const SizedBox(width: 4),
+                if (Platform.isWindows) ...[
+                  downloadBtn('zip', ext: 'zip'),
+                  const SizedBox(width: 4),
+                  downloadBtn('exe', ext: 'exe'),
+                ] else if (Platform.isLinux) ...[
+                  downloadBtn('rpm', ext: 'rpm'),
+                  const SizedBox(width: 4),
+                  downloadBtn('deb', ext: 'deb'),
+                  const SizedBox(width: 4),
+                  downloadBtn('targz', ext: 'tar.gz'),
+                ] else ...[
+                  downloadBtn('GitHub'),
+                ],
+                const SizedBox(width: 4),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () {
+                    SmartDialog.dismiss();
+                    PageUtils.launchURL(Constants.giteeReleasesUrl);
+                  },
+                  child: const Text('Gitee'),
+                ),
+              ],
             ),
           ],
         );
