@@ -1,4 +1,4 @@
-import 'package:PiliPlus/utils/chinese_converter.dart';
+import 'package:PiliPlus/bili_feed/bili_feed_hook.dart';
 
 final _regExp = RegExp("^(http:)?//", caseSensitive: false);
 
@@ -8,38 +8,14 @@ extension NullableStringExt on String? {
   bool get isNullOrEmpty => this == null || this!.isEmpty;
 
   String toSimplified() =>
-      this == null ? '' : ChineseConverter.toSimplified(this!);
+      this == null ? '' : BiliFeedHook.toSimplified(this!);
 }
 
 extension StringExt on String {
-  String toSimplified() => ChineseConverter.toSimplified(this);
+  String toSimplified() => BiliFeedHook.toSimplified(this);
 
   String subLength(int length) {
     if (this.length < length) return this;
     return substring(0, length);
-  }
-
-  String get substring1 {
-    return substring(1, length - 1);
-  }
-
-  String get emote {
-    int start = 0;
-    int end = length;
-
-    loop:
-    for (int index = length - 1; index >= 0; index--) {
-      switch (codeUnitAt(index)) {
-        case 0x5F || 0x7C: // `_`, `|`
-          start = index + 1;
-          break loop;
-        case 0x5B: // `[`
-          start = index + 1;
-        case 0x5D: // `]`
-          end = index;
-      }
-    }
-
-    return substring(start, end);
   }
 }

@@ -6,11 +6,10 @@ import 'package:PiliPlus/models/common/search/video_search_type.dart';
 import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/pages/search/widgets/search_text.dart';
 import 'package:PiliPlus/pages/search_panel/controller.dart';
+import 'package:PiliPlus/bili_feed/bili_feed_hook.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
-import 'package:PiliPlus/utils/extension/string_ext.dart';
-import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -110,7 +109,12 @@ class SearchVideoController
           }
 
           if (!customHandleResponse(isRefresh, res)) {
-            final filteredList = _applyCustomFilter(rawList);
+            final filteredList = BiliFeedHook.applyFilter(
+              rawList,
+              keyword: keyword,
+              titleMatchOnly: titleMatchOnly.value,
+              seenVideoIds: _seenVideoIds,
+            );
             page++;
 
             if (filteredList.isNotEmpty) {
@@ -157,22 +161,8 @@ class SearchVideoController
     }
   }
 
-  // 提取用于发送给 B 站 API 的搜索词（剥离 - 排除词，剥离 @ 与 # 前缀脱壳发送以获取最大候选池，简繁归一化）
-  String get cleanSearchKeyword {
-    final rawList = keyword.trim().split(RegExp(r'\s+'));
-    final searchTerms = <String>[];
-    for (final k in rawList) {
-      if (k.startsWith('-')) {
-        continue; // 排除词不发给接口
-      } else if (k.startsWith('@') || k.startsWith('#')) {
-        if (k.length > 1) searchTerms.add(k.substring(1)); // 脱壳发送
-      } else if (k.isNotEmpty) {
-        searchTerms.add(k);
-      }
-    }
-    final result = searchTerms.join(' ').toSimplified();
-    return result.isEmpty ? keyword.toSimplified() : result;
-  }
+  // 提取用于发送给 B 站 API 的搜索词（通过 BiliFeedHook 统一处理）
+  String get cleanSearchKeyword => BiliFeedHook.cleanKeyword(keyword);
 
   @override
   Future<LoadingState<SearchVideoData>> customGetData() =>
@@ -192,95 +182,16 @@ class SearchVideoController
         },
       );
 
-  List<SearchVideoItemModel> _applyCustomFilter(
-      List<SearchVideoItemModel> list) {
-    final rawKeywords =
-        keyword.trim().toLowerCase().toSimplified().split(RegExp(r'\s+'));
-    final includeKeywords = <String>[];
-    final excludeKeywords = <String>[];
-    final tagKeywords = <String>[];
-    final upKeywords = <String>[];
-
-    for (final k in rawKeywords) {
-      if (k.startsWith('-') && k.length > 1) {
-        excludeKeywords.add(k.substring(1));
-      } else if (k.startsWith('#') && k.length > 1) {
-        tagKeywords.add(k.substring(1));
-      } else if (k.startsWith('@') && k.length > 1) {
-        upKeywords.add(k.substring(1));
-      } else if (k.isNotEmpty) {
-        includeKeywords.add(k);
-      }
-    }
-
-    final filteredList = list.where((item) {
-      // 0. 黑名单 UP 主一票否决
-      final authorMid = item.owner?.mid;
-      if (authorMid != null &&
-          (GlobalData().blackMids.contains(authorMid) ||
-              Pref.blackMids.contains(authorMid))) {
-        return false;
-      }
-
-      final videoTitle = (item.title ?? '').toLowerCase().toSimplified();
-      final videoTags = (item.tag ?? '').toLowerCase().toSimplified();
-      final videoAuthor = (item.owner?.name ?? '').toLowerCase().toSimplified();
-
-      // 1. 负向排除词一票否决 (-)
-      if (excludeKeywords.isNotEmpty &&
-          excludeKeywords.any((k) => videoTitle.contains(k))) {
-        return false;
-      }
-
-      // 2. 正向普通词全匹配 (AND)
-      if (titleMatchOnly.value &&
-          includeKeywords.isNotEmpty &&
-          !includeKeywords.every((k) => videoTitle.contains(k))) {
-        return false;
-      }
-
-      // 3. Tag 标签过滤 (#)
-      if (tagKeywords.isNotEmpty &&
-          !tagKeywords.every((k) => videoTags.contains(k))) {
-        return false;
-      }
-
-      // 4. UP 主作者过滤 (@)
-      if (upKeywords.isNotEmpty &&
-          !upKeywords.any((k) => videoAuthor.contains(k))) {
-        return false;
-      }
-
-      final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
-          ? item.bvid
-          : (item.aid != null && item.aid != 0)
-              ? item.aid.toString()
-              : (item.seasonId != null && item.seasonId != 0)
-                  ? 'season_${item.seasonId}'
-                  : (item.roomId != null && item.roomId != 0)
-                      ? 'room_${item.roomId}'
-                      : (item.id != null && item.id != 0)
-                          ? item.id.toString()
-                          : null;
-
-      if (idKey != null && idKey.isNotEmpty) {
-        if (_seenVideoIds.contains(idKey)) {
-          return false;
-        }
-        _seenVideoIds.add(idKey);
-      }
-
-      return true;
-    }).toList();
-
-    return filteredList;
-  }
-
   @override
   List<SearchVideoItemModel>? getDataList(SearchVideoData response) {
     final list = response.list;
     if (list == null || list.isEmpty) return list;
-    return _applyCustomFilter(list);
+    return BiliFeedHook.applyFilter(
+      list,
+      keyword: keyword,
+      titleMatchOnly: titleMatchOnly.value,
+      seenVideoIds: _seenVideoIds,
+    );
   }
 
   final Rx<ArchiveFilterType> selectedType = ArchiveFilterType.totalrank.obs;

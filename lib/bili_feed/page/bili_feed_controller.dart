@@ -1,0 +1,358 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:PiliPlus/bili_feed/core/bili_filter_engine.dart';
+import 'package:PiliPlus/bili_feed/core/chinese_converter.dart';
+import 'package:PiliPlus/bili_feed/model/bili_feed_rule.dart';
+import 'package:PiliPlus/bili_feed/model/bili_feed_video_item.dart';
+import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/models/common/search/search_type.dart';
+import 'package:PiliPlus/models/search/result.dart';
+import 'package:PiliPlus/pages/common/common_controller.dart';
+import 'package:PiliPlus/pages/search_panel/video/controller.dart';
+import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
+
+class _KeywordWorker {
+  final BiliFeedRule rule;
+  late final SearchVideoController searchController;
+  final List<SearchVideoItemModel> buffer = [];
+
+  _KeywordWorker({required this.rule}) {
+    searchController = SearchVideoController(
+      keyword: rule.keyword,
+      searchType: SearchType.video,
+      tag: 'curated_${rule.id}',
+    );
+    searchController.titleMatchOnly.value = true;
+    searchController.page = rule.currentPage;
+  }
+
+  void reset() {
+    searchController.page = 1;
+    searchController.isEnd = false;
+    rule.currentPage = 1;
+    BiliFeedStorage.updateRulePage(rule.id, 1);
+    buffer.clear();
+  }
+
+  Future<void> replenish(int targetCount) async {
+    int attempts = 0;
+    while (buffer.length < targetCount && attempts < 4) {
+      attempts++;
+      if (searchController.isEnd) {
+        // 枯竭从头循环：重置到第 1 页
+        searchController.page = 1;
+        searchController.isEnd = false;
+        rule.currentPage = 1;
+        BiliFeedStorage.updateRulePage(rule.id, 1);
+      }
+
+      final res = await searchController.customGetData();
+      if (res case Success(:final response)) {
+        final rawList = response.list;
+        if (rawList == null || rawList.isEmpty) {
+          // B 站当前轮到底，重置并在下次循环
+          searchController.isEnd = true;
+          searchController.page = 1;
+          rule.currentPage = 1;
+          BiliFeedStorage.updateRulePage(rule.id, 1);
+          break;
+        }
+
+        // 复用搜索模块四维过滤
+        final filtered = searchController.getDataList(response);
+        searchController.page++;
+        rule.currentPage = searchController.page;
+        BiliFeedStorage.updateRulePage(rule.id, rule.currentPage);
+
+        if (filtered != null && filtered.isNotEmpty) {
+          // 选推专属额外筛选层：剔除课堂视频（PUGV）与充电视频（充电专属）
+          final validList = filtered.where((item) {
+            if (BiliFilterEngine.isClassroomVideo(item)) return false;
+            if (BiliFilterEngine.isChargingVideo(item)) return false;
+            return true;
+          }).toList();
+          if (validList.isNotEmpty) {
+            buffer.addAll(validList);
+            if (buffer.length >= targetCount) {
+              break;
+            }
+          } else {
+            await Future.delayed(const Duration(milliseconds: 100));
+          }
+        } else {
+          // 复用搜索控制器同款 100ms 拟人化呼吸防风控间隔
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
+  bool needReload = false;
+  bool get needRefresh => needReload;
+  set needRefresh(bool v) => needReload = v;
+
+  void markNeedRefresh() => markNeedReload();
+  void markNeedReload() {
+    needReload = true;
+  }
+
+  void onRulesChanged() {
+    needReload = false;
+    onReload();
+  }
+
+  @override
+  final ScrollController scrollController = ScrollController();
+
+  final List<_KeywordWorker> _workers = [];
+  final List<BiliFeedVideoItemModel> items = [];
+  final Set<String> _globalSeenIds = {};
+  String _rulesFingerprint = '';
+
+  int? lastRefreshAt;
+
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  final Rx<LoadingState<List<BiliFeedVideoItemModel>?>> loadingState =
+      Rx<LoadingState<List<BiliFeedVideoItemModel>?>>(LoadingState.loading());
+
+  String _calcRulesFingerprint(List<BiliFeedRule> rules) {
+    return rules
+        .map((r) => '${r.id}:${r.keyword}:${r.enabled}:${r.order}')
+        .join(';');
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    _reloadWorkers();
+
+    final cached = BiliFeedStorage.getLastFeedItems();
+    if (cached.isNotEmpty) {
+      final validCached = cached.where((item) {
+        if (BiliFilterEngine.isClassroomVideo(item)) {
+          return false;
+        }
+        final title =
+            ChineseConverter.toSimplified(item.title.toLowerCase());
+        if (title.contains('充电专属') ||
+            title.contains('充电专享') ||
+            title.contains('包月充电')) {
+          return false;
+        }
+        return true;
+      }).toList();
+      items.addAll(validCached);
+      for (final item in validCached) {
+        final key = (item.bvid != null && item.bvid!.isNotEmpty)
+            ? item.bvid!
+            : (item.aid != null && item.aid != 0)
+                ? item.aid.toString()
+                : '';
+        if (key.isNotEmpty) _globalSeenIds.add(key);
+      }
+      loadingState.value = Success(List<BiliFeedVideoItemModel>.from(items));
+    } else {
+      onLoadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  void _reloadWorkers() {
+    final rules =
+        BiliFeedStorage.getRules().where((r) => r.enabled).toList();
+    _rulesFingerprint = _calcRulesFingerprint(rules);
+    _workers.clear();
+    for (final rule in rules) {
+      _workers.add(_KeywordWorker(rule: rule));
+    }
+  }
+
+  String _getIdKey(SearchVideoItemModel item) {
+    return (item.bvid != null && item.bvid!.isNotEmpty)
+        ? item.bvid!
+        : (item.aid != null && item.aid != 0)
+            ? item.aid.toString()
+            : item.id?.toString() ?? '';
+  }
+
+  Future<List<BiliFeedVideoItemModel>> _fetchBatch() async {
+    final currentRules =
+        BiliFeedStorage.getRules().where((r) => r.enabled).toList();
+    final newFingerprint = _calcRulesFingerprint(currentRules);
+    if (newFingerprint != _rulesFingerprint) {
+      _reloadWorkers();
+    }
+
+    if (_workers.isEmpty) return [];
+
+    const int maxTotal = 21;
+    final int n = _workers.length;
+    final int baseQuota = maxTotal ~/ n;
+    final int minTargetPerWorker = math.max(1, baseQuota);
+
+    // 1. 各 Worker 先按启用规则平均分配：检查缓冲区并向 API 补仓
+    for (final worker in _workers) {
+      if (worker.buffer.length < minTargetPerWorker) {
+        await worker.replenish(minTargetPerWorker);
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    }
+
+    final List<BiliFeedVideoItemModel> batch = [];
+
+    // 从每个 worker 中先提取最多 baseQuota 个（排重后）
+    if (baseQuota > 0) {
+      for (final worker in _workers) {
+        int count = 0;
+        while (worker.buffer.isNotEmpty && count < baseQuota) {
+          final item = worker.buffer.removeAt(0);
+          final idKey = _getIdKey(item);
+
+          if (idKey.isNotEmpty && _globalSeenIds.contains(idKey)) {
+            continue;
+          }
+          if (idKey.isNotEmpty) {
+            _globalSeenIds.add(idKey);
+          }
+          batch.add(BiliFeedVideoItemModel.fromSearchItem(
+            item,
+            worker.rule.keyword,
+          ));
+          count++;
+        }
+      }
+    }
+
+    // 2. 如果除不断（或某些规则出货不足有空位），余数按过滤后视频存量最大的顺位填充
+    int remainingSlots = maxTotal - batch.length;
+    if (remainingSlots > 0) {
+      final sortedWorkers = List<_KeywordWorker>.from(_workers)
+        ..sort((a, b) => b.buffer.length.compareTo(a.buffer.length));
+
+      for (final worker in sortedWorkers) {
+        if (remainingSlots <= 0) break;
+        while (worker.buffer.isNotEmpty && remainingSlots > 0) {
+          final item = worker.buffer.removeAt(0);
+          final idKey = _getIdKey(item);
+
+          if (idKey.isNotEmpty && _globalSeenIds.contains(idKey)) {
+            continue;
+          }
+          if (idKey.isNotEmpty) {
+            _globalSeenIds.add(idKey);
+          }
+          batch.add(BiliFeedVideoItemModel.fromSearchItem(
+            item,
+            worker.rule.keyword,
+          ));
+          remainingSlots--;
+        }
+      }
+    }
+
+    // 3. 随机打散交织
+    batch.shuffle(math.Random());
+    return batch;
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    if (_isLoading) return;
+    _isLoading = true;
+
+    try {
+      if (_workers.isEmpty) {
+        _reloadWorkers();
+      }
+      final newBatch = await _fetchBatch();
+      if (newBatch.isNotEmpty) {
+        items.insertAll(0, newBatch);
+        lastRefreshAt = newBatch.length;
+        if (items.length > 200) {
+          items.removeRange(200, items.length);
+        }
+        BiliFeedStorage.saveLastFeedItems(items);
+        loadingState.value = Success(List<BiliFeedVideoItemModel>.from(items));
+      } else if (items.isEmpty) {
+        loadingState.value = const Success(<BiliFeedVideoItemModel>[]);
+      }
+    } catch (e) {
+      if (items.isEmpty) {
+        loadingState.value = Error(e.toString());
+      }
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> onLoadMore() async {
+    if (_isLoading) return;
+    _isLoading = true;
+
+    try {
+      if (_workers.isEmpty) {
+        _reloadWorkers();
+      }
+      final newBatch = await _fetchBatch();
+      if (newBatch.isNotEmpty) {
+        items.addAll(newBatch);
+        if (items.length > 200) {
+          final removeCount = items.length - 200;
+          items.removeRange(0, removeCount);
+          if (lastRefreshAt != null) {
+            lastRefreshAt = math.max(0, lastRefreshAt! - removeCount);
+          }
+        }
+        BiliFeedStorage.saveLastFeedItems(items);
+        loadingState.value = Success(List<BiliFeedVideoItemModel>.from(items));
+      } else if (items.isEmpty) {
+        loadingState.value = const Success(<BiliFeedVideoItemModel>[]);
+      }
+    } catch (e) {
+      if (items.isEmpty) {
+        loadingState.value = Error(e.toString());
+      }
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> onReload() async {
+    items.clear();
+    _globalSeenIds.clear();
+    lastRefreshAt = null;
+    loadingState.value = LoadingState.loading();
+    _reloadWorkers();
+    for (final w in _workers) {
+      w.reset();
+    }
+    await onLoadMore();
+  }
+
+  void removeItem(int index) {
+    if (index >= 0 && index < items.length) {
+      if (lastRefreshAt != null && index < lastRefreshAt!) {
+        lastRefreshAt = lastRefreshAt! - 1;
+      }
+      items.removeAt(index);
+      BiliFeedStorage.saveLastFeedItems(items);
+      loadingState.value = Success(List<BiliFeedVideoItemModel>.from(items));
+    }
+  }
+}
+
+// 别名保证向后兼容
+typedef CuratedFeedController = BiliFeedController;

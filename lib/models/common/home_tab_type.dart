@@ -1,7 +1,6 @@
 import 'package:PiliPlus/models/common/enum_with_label.dart';
 import 'package:PiliPlus/pages/common/common_controller.dart';
-import 'package:PiliPlus/pages/curated_feed/controller.dart';
-import 'package:PiliPlus/pages/curated_feed/view.dart';
+import 'package:PiliPlus/bili_feed/bili_feed_hook.dart';
 import 'package:PiliPlus/pages/hot/controller.dart';
 import 'package:PiliPlus/pages/hot/view.dart';
 import 'package:PiliPlus/pages/live/controller.dart';
