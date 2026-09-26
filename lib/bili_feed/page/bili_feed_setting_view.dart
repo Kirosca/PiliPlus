@@ -26,6 +26,7 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
 
   @override
   void dispose() {
+    SmartDialog.dismiss(tag: 'feed_rule_reset_undo');
     if (_hasChanged) {
       BiliFeedStorage.clearLastFeedItems();
       if (Get.isRegistered<BiliFeedController>()) {
@@ -119,6 +120,49 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
   }
 
   void _resetDefaults() {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        final colorScheme = Theme.of(dialogCtx).colorScheme;
+        return AlertDialog(
+          title: const Text('重置为默认规则'),
+          content: Text(
+            '确定要清空当前的 ${rules.length} 条选推规则并恢复出厂默认规则吗？\n\n'
+            '（重置后 5 秒内支持一键撤回）',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
+              ),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                _executeResetWithUndo();
+              },
+              child: const Text('确定重置'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _executeResetWithUndo() {
+    final backupRules = rules
+        .map((r) => BiliFeedRule(
+              id: r.id,
+              keyword: r.keyword,
+              enabled: r.enabled,
+              order: r.order,
+              currentPage: r.currentPage,
+            ))
+        .toList();
+
     rules = BiliFeedStorage.defaultKeywords.asMap().entries.map((entry) {
       return BiliFeedRule(
         id: 'default_${entry.key}',
@@ -129,7 +173,82 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
     }).toList();
     _saveRules();
     setState(() {});
-    SmartDialog.showToast('已重置为默认规则');
+
+    _showUndoToast(backupRules);
+  }
+
+  void _showUndoToast(List<BiliFeedRule> backupRules) {
+    SmartDialog.dismiss(tag: 'feed_rule_reset_undo');
+    final theme = Theme.of(context);
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+
+    SmartDialog.show(
+      tag: 'feed_rule_reset_undo',
+      alignment: Alignment.bottomCenter,
+      usePenetrate: true,
+      clickMaskDismiss: false,
+      displayTime: const Duration(seconds: 5),
+      builder: (dialogContext) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: viewPadding.bottom + 65,
+              left: 16,
+              right: 16,
+            ),
+            child: Material(
+              elevation: 6,
+              color: theme.colorScheme.inverseSurface,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.restore,
+                      color: theme.colorScheme.onInverseSurface,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '已重置为默认规则',
+                      style: TextStyle(
+                        color: theme.colorScheme.onInverseSurface,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: theme.colorScheme.inversePrimary,
+                      ),
+                      onPressed: () {
+                        SmartDialog.dismiss(tag: 'feed_rule_reset_undo');
+                        rules = backupRules;
+                        _saveRules();
+                        setState(() {});
+                        SmartDialog.showToast('已撤回，已恢复原规则');
+                      },
+                      child: const Text(
+                        '撤回',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showImportExport() {
