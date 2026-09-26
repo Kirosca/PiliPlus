@@ -3,6 +3,7 @@ import 'package:PiliPlus/bili_feed/core/chinese_converter.dart';
 import 'package:PiliPlus/models/search/result.dart';
 
 export 'package:PiliPlus/bili_feed/core/bili_filter_engine.dart';
+export 'package:PiliPlus/bili_feed/core/bili_update.dart';
 export 'package:PiliPlus/bili_feed/core/chinese_converter.dart';
 export 'package:PiliPlus/bili_feed/model/bili_feed_rule.dart';
 export 'package:PiliPlus/bili_feed/model/bili_feed_video_item.dart';
