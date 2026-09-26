@@ -19,7 +19,7 @@ import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/utils/update.dart';
+import 'package:PiliPlus/bili_feed/core/bili_update.dart';
 import 'package:collection/collection.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:get/get.dart';
@@ -77,7 +77,7 @@ class MainController extends GetxController
   void onInit() {
     super.onInit();
     if (Pref.autoUpdate) {
-      Update.checkUpdate();
+      BiliUpdate.checkUpdate();
     }
 
     setNavBarConfig();

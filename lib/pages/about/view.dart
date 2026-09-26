@@ -24,7 +24,7 @@ import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
-import 'package:PiliPlus/utils/update.dart';
+import 'package:PiliPlus/bili_feed/core/bili_update.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -139,11 +139,11 @@ class _AboutPageState extends State<AboutPage> {
             ),
           ),
           ListTile(
-            onTap: () => Update.checkUpdate(false),
-            onLongPress: () => Update.showTestUpdateDialog(),
+            onTap: () => BiliUpdate.checkUpdate(false),
+            onLongPress: () => BiliUpdate.showTestUpdateDialog(),
             onSecondaryTap: PlatformUtils.isMobile
                 ? null
-                : () => Update.showTestUpdateDialog(),
+                : () => BiliUpdate.showTestUpdateDialog(),
             title: const Text('当前版本'),
             leading: const Icon(Icons.commit_outlined),
             trailing: Text(
