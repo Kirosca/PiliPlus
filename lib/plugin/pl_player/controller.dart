@@ -16,6 +16,7 @@ import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models/user/danmaku_rule.dart';
 import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/models_new/video/video_shot/data.dart';
+import 'package:PiliPlus/pages/danmaku/controller.dart';
 import 'package:PiliPlus/pages/danmaku/danmaku_model.dart';
 import 'package:PiliPlus/pages/sponsor_block/block_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
@@ -305,6 +306,41 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   late RuleFilter filters = Pref.danmakuFilterRule;
   // 关联弹幕控制器
   DanmakuController<DanmakuExtra>? danmakuController;
+  PlDanmakuController? plDanmakuController;
+
+  /// 即时将屏幕上匹配的弹幕标记为失效以从画面中移除
+  void expireDanmakuOnScreen({int? id, String? mid}) {
+    if (danmakuController case final ctr?) {
+      try {
+        for (final item in ctr.staticDanmaku.nonNulls) {
+          if (item.content.extra case VideoDanmaku extra) {
+            if ((id != null && extra.id == id) ||
+                (mid != null && extra.mid == mid)) {
+              item.expired = true;
+            }
+          }
+        }
+        for (final row in ctr.scrollDanmaku) {
+          for (final item in row) {
+            if (item.content.extra case VideoDanmaku extra) {
+              if ((id != null && extra.id == id) ||
+                  (mid != null && extra.mid == mid)) {
+                item.expired = true;
+              }
+            }
+          }
+        }
+        for (final item in ctr.specialDanmaku) {
+          if (item.content.extra case VideoDanmaku extra) {
+            if ((id != null && extra.id == id) ||
+                (mid != null && extra.mid == mid)) {
+              item.expired = true;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  }
   bool showDanmaku = true;
   Set<int> dmState = <int>{};
   late final mergeDanmaku = Pref.mergeDanmaku;

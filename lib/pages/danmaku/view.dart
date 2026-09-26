@@ -51,6 +51,7 @@ class _PlDanmakuState extends State<PlDanmaku> {
       playerController,
       widget.isFileSource,
     );
+    playerController.plDanmakuController = _plDanmakuController;
     if (playerController.enableShowDanmaku.value) {
       if (widget.isFileSource) {
         _plDanmakuController.initFileDmIfNeeded();
@@ -157,6 +158,7 @@ class _PlDanmakuState extends State<PlDanmaku> {
 
   @override
   void dispose() {
+    playerController.plDanmakuController = null;
     playerController
       ..removePositionListener(videoPositionListen)
       ..removeStatusLister(playerListener);

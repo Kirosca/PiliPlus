@@ -129,4 +129,18 @@ class PlDanmakuController {
       Utils.reportError(e, s);
     }
   }
+
+  /// 从当前内存缓存中剔除指定 id 的单条弹幕
+  void removeDanmakuById(int id) {
+    for (final list in _dmSegMap.values) {
+      list.removeWhere((e) => e.id.toInt() == id);
+    }
+  }
+
+  /// 从当前内存缓存中剔除指定 midHash 的所有弹幕
+  void removeDanmakuByMid(String midHash) {
+    for (final list in _dmSegMap.values) {
+      list.removeWhere((e) => e.midHash == midHash);
+    }
+  }
 }

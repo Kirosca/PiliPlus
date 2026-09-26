@@ -18,7 +18,7 @@ typedef OnReport = Future<LoadingState> Function(
   bool banUid,
 );
 
-Future<void> autoWrapReportDialog(
+Future<bool?> autoWrapReportDialog(
   BuildContext context,
   Map<String, Map<int, String>> options,
   OnReport onReport, {
@@ -61,7 +61,7 @@ Future<void> autoWrapReportDialog(
     );
   }
 
-  return showDialog(
+  return showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: title,
@@ -162,7 +162,7 @@ Future<void> autoWrapReportDialog(
               );
               SmartDialog.dismiss();
               if (res.isSuccess) {
-                Get.back();
+                Get.back(result: true);
                 SmartDialog.showToast('举报成功');
               } else {
                 res.toast();

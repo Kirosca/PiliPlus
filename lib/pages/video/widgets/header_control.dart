@@ -244,18 +244,18 @@ class HeaderControl extends StatefulWidget {
     }
   }
 
-  static Future<void> reportDanmaku(
+  static Future<bool> reportDanmaku(
     BuildContext context, {
     required VideoDanmaku extra,
     required PlPlayerController ctr,
-  }) {
+  }) async {
     if (Accounts.main.isLogin) {
-      return autoWrapReportDialog(
+      final success = await autoWrapReportDialog(
         context,
         ReportOptions.danmakuReport,
         withContent: ReportOptions.danmakuReportCheck,
         contentRequired: ReportOptions.danmakuReportCheck,
-        (reasonType, reasonDesc, banUid) {
+        (reasonType, reasonDesc, banUid) async {
           if (banUid) {
             final filter = ctr.filters;
             if (filter.dmUid.add(extra.mid)) {
@@ -263,28 +263,40 @@ class HeaderControl extends StatefulWidget {
               GStorage.localCache.put(LocalCacheKey.danmakuFilterRules, filter);
             }
             DanmakuFilterHttp.danmakuFilterAdd(filter: extra.mid, type: 2);
+            // 联动方案 3：清除当前内存缓存中该发送者的所有弹幕，并清除屏幕上的该用户弹幕
+            ctr.plDanmakuController?.removeDanmakuByMid(extra.mid);
+            ctr.expireDanmakuOnScreen(mid: extra.mid);
           }
-          return DanmakuHttp.danmakuReport(
+          final res = await DanmakuHttp.danmakuReport(
             reason: reasonType,
             cid: ctr.cid!,
             id: extra.id,
             content: reasonDesc,
           );
+          if (res.isSuccess) {
+            // 联动方案 2：清除当前内存缓存中该条弹幕
+            ctr.plDanmakuController?.removeDanmakuById(extra.id);
+            // 联动方案 1：屏幕上的该弹幕立即销毁
+            ctr.expireDanmakuOnScreen(id: extra.id);
+          }
+          return res;
         },
       );
+      return success == true;
     } else {
-      return SmartDialog.showToast('请先登录');
+      SmartDialog.showToast('请先登录');
+      return false;
     }
   }
 
-  static Future<void> reportLiveDanmaku(
+  static Future<bool> reportLiveDanmaku(
     BuildContext context, {
     required int roomId,
     required String msg,
     required LiveDanmaku extra,
-  }) {
+  }) async {
     if (Accounts.main.isLogin) {
-      return autoWrapReportDialog(
+      final success = await autoWrapReportDialog(
         context,
         ban: false,
         ReportOptions.liveDanmakuReport,
@@ -318,8 +330,10 @@ class HeaderControl extends StatefulWidget {
           );
         },
       );
+      return success == true;
     } else {
-      return SmartDialog.showToast('请先登录');
+      SmartDialog.showToast('请先登录');
+      return false;
     }
   }
 }
@@ -1644,7 +1658,11 @@ class HeaderControlState extends State<HeaderControl>
                     context,
                     extra: extra,
                     ctr: plPlayerController,
-                  ),
+                  ).then((success) {
+                    if (success) {
+                      item.expired = true;
+                    }
+                  }),
                   icon: const Icon(CustomIcons.player_dm_tip_back),
                 ),
             ],

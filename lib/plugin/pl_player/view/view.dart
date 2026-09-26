@@ -2353,7 +2353,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   onTap: () => HeaderControl.deleteDanmaku(
                     extra.id,
                     plPlayerController.cid!,
-                  ),
+                  ).then((success) {
+                    if (success) {
+                      item.expired = true;
+                    }
+                  }),
                 )
               else
                 _dmActionItem(
@@ -2366,7 +2370,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                     context,
                     extra: extra,
                     ctr: plPlayerController,
-                  ),
+                  ).then((success) {
+                    if (success) {
+                      item.expired = true;
+                    }
+                  }),
                 ),
               if (seekOffset != null)
                 _dmActionItem(
@@ -2411,7 +2419,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                       .roomId,
                   msg: item.content.text,
                   extra: extra,
-                ),
+                ).then((success) {
+                  if (success) {
+                    item.expired = true;
+                  }
+                }),
               ),
             ],
           },
