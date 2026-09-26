@@ -204,31 +204,29 @@ abstract final class Update {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: () => onDownload(data),
-                        icon: const Icon(Icons.cloud_download_outlined, size: 18),
-                        label: const Text('GitHub 下载'),
-                      ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => onDownload(data),
+                      icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                      label: const Text('GitHub'),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: () {
-                          SmartDialog.dismiss();
-                          PageUtils.launchURL(Constants.giteeReleasesUrl);
-                        },
-                        icon: const Icon(Icons.bolt, size: 18),
-                        label: const Text('Gitee 下载'),
-                      ),
+                    const SizedBox(width: 8),
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        SmartDialog.dismiss();
+                        PageUtils.launchURL(Constants.giteeReleasesUrl);
+                      },
+                      icon: const Icon(Icons.bolt, size: 18),
+                      label: const Text('Gitee'),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    if (isAuto)
+                    if (isAuto) ...[
                       TextButton(
                         onPressed: () {
                           SmartDialog.dismiss();
@@ -243,7 +241,8 @@ abstract final class Update {
                           style: TextStyle(color: colorScheme.outline),
                         ),
                       ),
-                    const Spacer(),
+                      const SizedBox(width: 8),
+                    ],
                     TextButton(
                       onPressed: SmartDialog.dismiss,
                       child: Text(
