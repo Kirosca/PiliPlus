@@ -163,7 +163,6 @@ Widget htmlRender({
       backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
       padding: HtmlPaddings.all(12),
       margin: Margins.symmetric(vertical: 8),
-      borderRadius: const BorderRadius.all(Radius.circular(8)),
     ),
     'hr': Style(
       margin: Margins.symmetric(vertical: 16),
