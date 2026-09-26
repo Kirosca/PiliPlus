@@ -256,7 +256,7 @@ abstract final class Pref {
     if (codecs is List) {
       return codecs.map((i) => VideoDecodeFormatType.values.byName(i)).toList();
     }
-    return const <VideoDecodeFormatType>[.AVC, .AV1];
+    return const <VideoDecodeFormatType>[.AVC, .HEVC, .AV1];
   }
 
   static List<VideoDecodeFormatType> get preferCodecsCellular {
@@ -267,10 +267,13 @@ abstract final class Pref {
     return preferCodecs;
   }
 
-  static String get hardwareDecoding => _setting.get(
-    SettingBoxKey.hardwareDecoding,
-    defaultValue: HwDecType.kHwdec,
-  );
+  static String get hardwareDecoding {
+    final val = _setting.get(SettingBoxKey.hardwareDecoding);
+    if (val == null || (Platform.isAndroid && val == 'mediacodec,auto-safe')) {
+      return HwDecType.kHwdec;
+    }
+    return val;
+  }
 
   static String get videoSync =>
       _setting.get(SettingBoxKey.videoSync, defaultValue: 'display-resample');
