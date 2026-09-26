@@ -38,7 +38,7 @@ class BiliFeedRule {
 class BiliFeedStorage {
   static const List<String> defaultKeywords = [
     'TED演讲',
-    '#余华',
+    '余华 #余华',
     '@影视飓风',
   ];
 
@@ -63,11 +63,15 @@ class BiliFeedStorage {
           ..sort((a, b) => a.order.compareTo(b.order));
 
         const oldDefaults = ['Flutter -测试', '#以撒', '@嘤武罗'];
+        const previousDefaults = ['TED演讲', '#余华', '@影视飓风'];
         final currentKeywords = rules.map((r) => r.keyword).toList();
         if (currentKeywords.length == 3 &&
-            currentKeywords[0] == oldDefaults[0] &&
-            currentKeywords[1] == oldDefaults[1] &&
-            currentKeywords[2] == oldDefaults[2]) {
+            ((currentKeywords[0] == oldDefaults[0] &&
+              currentKeywords[1] == oldDefaults[1] &&
+              currentKeywords[2] == oldDefaults[2]) ||
+             (currentKeywords[0] == previousDefaults[0] &&
+              currentKeywords[1] == previousDefaults[1] &&
+              currentKeywords[2] == previousDefaults[2]))) {
           return _generateDefaultRules();
         }
 
