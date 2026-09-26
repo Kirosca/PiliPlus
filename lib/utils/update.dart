@@ -10,11 +10,13 @@ import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/gestures.dart' show TapGestureRecognizer;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 
 abstract final class Update {
@@ -208,7 +210,7 @@ abstract final class Update {
                   children: [
                     FilledButton.tonalIcon(
                       onPressed: () => onDownload(data),
-                      icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                      icon: const Icon(FontAwesomeIcons.github, size: 18),
                       label: const Text('GitHub'),
                     ),
                     const SizedBox(width: 8),
@@ -217,7 +219,7 @@ abstract final class Update {
                         SmartDialog.dismiss();
                         PageUtils.launchURL(Constants.giteeReleasesUrl);
                       },
-                      icon: const Icon(Icons.bolt, size: 18),
+                      icon: const Icon(CustomIcons.gitee, size: 18),
                       label: const Text('Gitee'),
                     ),
                   ],

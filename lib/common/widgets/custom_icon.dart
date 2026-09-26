@@ -39,4 +39,5 @@ abstract final class CustomIcons {
   static const IconData touch_app_rotate_270 = IconData(0xe81e, fontFamily: _kFontFam);
   static const IconData view_headline_rotate_90 = IconData(0xe81f, fontFamily: _kFontFam);
   static const IconData watch_later_outlined = IconData(0xe820, fontFamily: _kFontFam);
+  static const IconData gitee = IconData(0xe821, fontFamily: _kFontFam);
 }
