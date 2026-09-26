@@ -33,7 +33,15 @@ class ArticleOpus extends StatelessWidget {
           final item = _ops[index];
           switch (item.insert) {
             case String e:
-              return Text(e);
+              return Text(
+                e,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.75,
+                  letterSpacing: 0.35,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              );
             case Insert(:final card):
               if (card != null) {
                 if (card.url?.isNotEmpty == true) {
@@ -86,7 +94,7 @@ class ArticleOpus extends StatelessWidget {
           return Text(e.toString());
         }
       },
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
   }
 }

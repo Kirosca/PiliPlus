@@ -81,7 +81,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               _buildContent(
-                maxWidth - this.padding.horizontal - 2 * padding - 24,
+                maxWidth - this.padding.horizontal - 2 * padding - 32,
               ),
               SelectionContainer.disabled(
                 child: SliverToBoxAdapter(
@@ -157,7 +157,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
   }
 
   Widget _buildContent(double maxWidth) => SliverPadding(
-    padding: const .symmetric(horizontal: 12, vertical: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     sliver: Obx(
       () {
         if (controller.isLoaded.value) {
@@ -204,7 +204,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
                     maxWidth: maxWidth,
                   );
                 },
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
               );
             }
           } else {
@@ -220,9 +220,21 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
               if (controller.summary.title != null)
                 SliverToBoxWithVisibilityAdapter(
                   onVisibilityChanged: controller.showTitle.call,
-                  child: Text(
-                    controller.summary.title!,
-                    style: const TextStyle(fontSize: 17, fontWeight: .bold),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 4),
+                    child: Text(
+                      controller.summary.title!,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1.35,
+                        letterSpacing: -0.3,
+                      ) ?? const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        height: 1.35,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                   ),
                 ),
               SliverToBoxAdapter(child: _buildAuthor()),
@@ -574,50 +586,71 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
   }
 
   Widget? _buildAuthor() {
+    final author = controller.summary.author;
     final pubTime =
         controller.opusData?.modules.moduleAuthor?.pubTs ??
         controller.articleData?.publishTime;
-    return Padding(
-      padding: const .symmetric(vertical: 10),
-      child: GestureDetector(
-        onTap: () => Get.toNamed(
-          '/member?mid=${controller.summary.author?.mid}',
-        ),
-        child: SelectionContainer.disabled(
-          child: Row(
-            spacing: 10,
-            children: [
-              NetworkImgLayer(
-                width: 40,
-                height: 40,
-                type: .avatar,
-                src: controller.summary.author?.face,
-              ),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: .start,
-                  children: [
-                    Text(
-                      controller.summary.author?.name ?? '',
-                      style: TextStyle(
-                        fontSize: theme.textTheme.titleSmall!.fontSize,
-                      ),
-                    ),
-                    if (pubTime != null)
-                      Text(
-                        DateFormatUtils.format(pubTime),
-                        style: TextStyle(
-                          color: theme.colorScheme.outline,
-                          fontSize: theme.textTheme.labelSmall!.fontSize,
+    if (author == null && pubTime == null) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Get.toNamed(
+              '/member?mid=${author?.mid}',
+            ),
+            child: SelectionContainer.disabled(
+              child: Row(
+                children: [
+                  NetworkImgLayer(
+                    width: 42,
+                    height: 42,
+                    type: .avatar,
+                    src: author?.face,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          author?.name ?? '',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
                         ),
-                      ),
-                  ],
-                ),
+                        if (pubTime != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            DateFormatUtils.format(pubTime),
+                            style: TextStyle(
+                              color: theme.colorScheme.outline,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        Divider(
+          height: 1,
+          thickness: 0.5,
+          color: theme.dividerColor.withValues(alpha: 0.08),
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 }

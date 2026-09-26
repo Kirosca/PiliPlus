@@ -48,6 +48,7 @@ class OpusContent extends StatelessWidget {
   static InlineSpan _node2Widget({
     required Node item,
     bool isQuote = false,
+    bool isHeading = false,
     required String opusId,
     required ColorScheme colorScheme,
     required ValueGetter<double> surfaceLuminance,
@@ -58,7 +59,7 @@ class OpusContent extends StatelessWidget {
         switch (rich.type) {
           case 'RICH_TEXT_NODE_TYPE_EMOJI':
             Emoji emoji = rich.emoji!;
-            final size = 20.0 * emoji.size;
+            final size = (isHeading ? 24.0 : 20.0) * emoji.size;
             return WidgetSpan(
               rawText: rich.origText,
               child: emoteTooltipBuilder(
@@ -109,6 +110,8 @@ class OpusContent extends StatelessWidget {
                 rich.type == 'RICH_TEXT_NODE_TYPE_TEXT'
                     ? null
                     : colorScheme.primary,
+                null,
+                isHeading,
               ),
               recognizer: NoDeadlineTapGestureRecognizer()
                 ..onTap = () {
@@ -145,18 +148,26 @@ class OpusContent extends StatelessWidget {
           item.word,
           surfaceLuminance: surfaceLuminance,
           defaultColor: isQuote ? colorScheme.onSurfaceVariant : null,
+          isHeading: isHeading,
         );
     }
   }
 
-  static TextStyle _getStyle(Style? style, [Color? color, double? fontSize]) =>
+  static TextStyle _getStyle(
+    Style? style, [
+    Color? color,
+    double? fontSize,
+    bool isHeading = false,
+  ]) =>
       TextStyle(
         decoration: style?.strikethrough == true
             ? TextDecoration.lineThrough
             : null,
         decorationColor: color,
         fontStyle: style?.italic == true ? FontStyle.italic : null,
-        fontWeight: style?.bold == true ? FontWeight.bold : null,
+        fontWeight: style?.bold == true
+            ? FontWeight.bold
+            : (isHeading ? FontWeight.bold : null),
         color: color,
         fontSize: fontSize,
       );
@@ -165,6 +176,7 @@ class OpusContent extends StatelessWidget {
     Word? word, {
     Color? defaultColor,
     required ValueGetter<double> surfaceLuminance,
+    bool isHeading = false,
   }) {
     Color? color;
     if (word?.color case final c?) {
@@ -182,12 +194,25 @@ class OpusContent extends StatelessWidget {
         color = tmpColor;
       }
     }
+
+    double? effectiveSize = word?.fontSize;
+    if (effectiveSize == null) {
+      if (isHeading) {
+        effectiveSize = 19.0;
+      } else if (word?.fontLevel == 'small') {
+        effectiveSize = 13.0;
+      } else {
+        effectiveSize = 16.0;
+      }
+    }
+
     return TextSpan(
       text: word?.words,
       style: _getStyle(
         word?.style,
         color ?? defaultColor,
-        word?.effectiveFontSize,
+        effectiveSize,
+        isHeading,
       ),
     );
   }
@@ -218,10 +243,19 @@ class OpusContent extends StatelessWidget {
               Widget widget = Text.rich(
                 textAlign: element.align == 1 ? TextAlign.center : null,
                 TextSpan(
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.75,
+                    letterSpacing: 0.35,
+                    color: isQuote
+                        ? colorScheme.onSurfaceVariant
+                        : colorScheme.onSurface,
+                  ),
                   children: element.text?.nodes
                       ?.map(
                         (item) => _node2Widget(
                           item: item,
+                          isQuote: isQuote,
                           opusId: opusId,
                           colorScheme: colorScheme,
                           surfaceLuminance: getSurfaceLuminance,
@@ -232,16 +266,24 @@ class OpusContent extends StatelessWidget {
               );
               if (isQuote) {
                 widget = Container(
-                  padding: const .only(left: 8, top: 4, right: 4, bottom: 4),
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     border: Border(
                       left: BorderSide(
-                        color: colorScheme.outlineVariant,
-                        width: 4,
+                        color: colorScheme.primary.withValues(alpha: 0.7),
+                        width: 3.5,
                       ),
                     ),
-                    borderRadius: const BorderRadius.all(Radius.circular(6)),
-                    color: colorScheme.onInverseSurface,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(8),
+                    ),
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.35,
+                    ),
                   ),
                   child: widget,
                 );
@@ -258,14 +300,17 @@ class OpusContent extends StatelessWidget {
                     ? null
                     : width * pic.height! / pic.width!;
                 width ??= maxWidth;
-                Widget child = CachedNetworkImage(
-                  width: width,
-                  height: height,
-                  memCacheWidth: width.cacheSize(context),
-                  imageUrl: ImageUtils.thumbnailUrl(pic.url!, 60),
-                  fadeInDuration: const Duration(milliseconds: 120),
-                  fadeOutDuration: const Duration(milliseconds: 120),
-                  placeholder: (_, _) => Image.asset(Assets.loading),
+                Widget child = ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(8)),
+                  child: CachedNetworkImage(
+                    width: width,
+                    height: height,
+                    memCacheWidth: width.cacheSize(context),
+                    imageUrl: ImageUtils.thumbnailUrl(pic.url!, 60),
+                    fadeInDuration: const Duration(milliseconds: 120),
+                    fadeOutDuration: const Duration(milliseconds: 120),
+                    placeholder: (_, _) => Image.asset(Assets.loading),
+                  ),
                 );
                 if (!(pic.isLongPic ?? false)) {
                   child = fromHero(
@@ -308,16 +353,30 @@ class OpusContent extends StatelessWidget {
                   placeholder: (_, _) => const SizedBox.shrink(),
                 );
               } else {
-                return const Divider();
+                return Divider(
+                  height: 24,
+                  thickness: 1,
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                );
               }
             case 5 when (element.list?.items?.isNotEmpty == true):
               return Text.rich(
                 TextSpan(
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.75,
+                    letterSpacing: 0.35,
+                    color: colorScheme.onSurface,
+                  ),
                   children: element.list!.items!.mapIndexed((i, entry) {
                     return TextSpan(
                       children: [
-                        const WidgetSpan(
-                          child: Icon(MdiIcons.circleMedium),
+                        WidgetSpan(
+                          child: Icon(
+                            MdiIcons.circleMedium,
+                            size: 18,
+                            color: colorScheme.primary,
+                          ),
                           alignment: .middle,
                         ),
                         ...entry.nodes!.map((item) {
@@ -619,10 +678,14 @@ class OpusContent extends StatelessWidget {
                   );
               }
               return Material(
-                shape: const RoundedRectangleBorder(
-                  borderRadius: .all(.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  side: BorderSide(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+                  ),
                 ),
-                color: colorScheme.onInverseSurface,
+                color: colorScheme.surfaceContainerLow,
+                clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: type == 'LINK_CARD_TYPE_GOODS'
                       ? null
@@ -680,7 +743,7 @@ class OpusContent extends StatelessWidget {
                             }
                           } catch (_) {}
                         },
-                  borderRadius: const .all(.circular(8)),
+                  borderRadius: const BorderRadius.all(Radius.circular(10)),
                   child: Padding(
                     padding: const .all(8),
                     child: child,
@@ -705,27 +768,66 @@ class OpusContent extends StatelessWidget {
                   )
                   .render(renderer);
               return Container(
-                padding: const .all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  borderRadius: const .all(.circular(8)),
-                  color: colorScheme.onInverseSurface,
+                  borderRadius: const BorderRadius.all(Radius.circular(8)),
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                  border: Border.all(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  ),
                 ),
-                width: .infinity,
-                child: Text.rich(renderer.span!),
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Text.rich(
+                    renderer.span!,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13.5,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
               );
             case 8 when (element.heading?.nodes?.isNotEmpty == true):
-              return Text.rich(
-                TextSpan(
-                  children: element.heading!.nodes!
-                      .map(
-                        (e) => _node2Widget(
-                          item: e,
-                          opusId: opusId,
-                          colorScheme: colorScheme,
-                          surfaceLuminance: getSurfaceLuminance,
+              return Padding(
+                padding: const EdgeInsets.only(top: 14, bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 18,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
+                            height: 1.4,
+                            color: colorScheme.onSurface,
+                          ),
+                          children: element.heading!.nodes!
+                              .map(
+                                (e) => _node2Widget(
+                                  item: e,
+                                  opusId: opusId,
+                                  colorScheme: colorScheme,
+                                  surfaceLuminance: getSurfaceLuminance,
+                                  isHeading: true,
+                                ),
+                              )
+                              .toList(),
                         ),
-                      )
-                      .toList(),
+                      ),
+                    ),
+                  ],
                 ),
               );
             default:
@@ -764,7 +866,7 @@ class OpusContent extends StatelessWidget {
           );
         }
       },
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
   }
 }
@@ -933,41 +1035,54 @@ Widget moduleBlockedItem(
 
 Widget opusCollection(ThemeData theme, ModuleCollection item) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: 12),
     child: Material(
-      borderRadius: const BorderRadius.all(Radius.circular(8)),
-      color: theme.colorScheme.onInverseSurface,
+      borderRadius: const BorderRadius.all(Radius.circular(10)),
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(10)),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
       child: InkWell(
-        borderRadius: const BorderRadius.all(Radius.circular(8)),
+        borderRadius: const BorderRadius.all(Radius.circular(10)),
         onTap: () => Get.toNamed(
           '/articleList',
           parameters: {'id': '${item.id}'},
         ),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Expanded(
                 child: Column(
-                  mainAxisSize: .min,
-                  crossAxisAlignment: .start,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title!),
+                    Text(
+                      item.title!,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
                     Text.rich(
                       TextSpan(
                         children: [
                           WidgetSpan(
                             alignment: .middle,
-                            child: Icon(
-                              size: 18,
-                              Icons.article_outlined,
-                              color: theme.colorScheme.outline,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Icon(
+                                size: 16,
+                                Icons.article_outlined,
+                                color: theme.colorScheme.outline,
+                              ),
                             ),
                           ),
                           TextSpan(
                             text: '${item.name} · ${item.count}',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12.5,
                               color: theme.colorScheme.outline,
                             ),
                           ),

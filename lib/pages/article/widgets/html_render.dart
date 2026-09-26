@@ -19,6 +19,8 @@ Widget htmlRender({
   required double maxWidth,
 }) {
   // if (kDebugMode) debugPrint('htmlRender');
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
   final extensions = [
     TagExtension(
       tagsToExtend: <String>{'img'},
@@ -41,16 +43,36 @@ Widget htmlRender({
             r'max-height:(\d+)px',
           ).firstMatch('${attributes['style']}')?.group(1);
           if (clazz?.contains('cut-off') == true || height != null) {
-            return CachedNetworkImage(
-              width: maxWidth,
-              memCacheWidth: maxWidth.cacheSize(context),
-              height: height != null ? double.parse(height) : null,
-              imageUrl: ImageUtils.thumbnailUrl(imgUrl),
-              fit: BoxFit.contain,
-              placeholder: (_, _) => const SizedBox.shrink(),
+            return ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(8)),
+              child: CachedNetworkImage(
+                width: maxWidth,
+                memCacheWidth: maxWidth.cacheSize(context),
+                height: height != null ? double.parse(height) : null,
+                imageUrl: ImageUtils.thumbnailUrl(imgUrl),
+                fit: BoxFit.contain,
+                placeholder: (_, _) => const SizedBox.shrink(),
+              ),
             );
           }
           final width = isEmote ? 22.0 : maxWidth;
+          Widget imageWidget = CachedNetworkImage(
+            width: width,
+            height: isEmote ? 22.0 : null,
+            memCacheWidth: width.cacheSize(context),
+            imageUrl: ImageUtils.thumbnailUrl(imgUrl, 60),
+            fadeInDuration: const Duration(milliseconds: 120),
+            fadeOutDuration: const Duration(milliseconds: 120),
+            placeholder: (context, url) => Image.asset(Assets.loading),
+          );
+
+          if (!isEmote) {
+            imageWidget = ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(8)),
+              child: imageWidget,
+            );
+          }
+
           return GestureDetector(
             onTap: () => PageUtils.imageView(
               imgList: [SourceModel(url: imgUrl)],
@@ -58,15 +80,7 @@ Widget htmlRender({
             ),
             child: fromHero(
               tag: imgUrl,
-              child: CachedNetworkImage(
-                width: width,
-                height: isEmote ? 22.0 : null,
-                memCacheWidth: width.cacheSize(context),
-                imageUrl: ImageUtils.thumbnailUrl(imgUrl, 60),
-                fadeInDuration: const Duration(milliseconds: 120),
-                fadeOutDuration: const Duration(milliseconds: 120),
-                placeholder: (context, url) => Image.asset(Assets.loading),
-              ),
+              child: imageWidget,
             ),
           );
         } catch (err) {
@@ -79,46 +93,92 @@ Widget htmlRender({
   final style = {
     'html': Style(
       fontSize: FontSize(16),
-      lineHeight: LineHeight.percent(160),
-      letterSpacing: 0.3,
+      lineHeight: LineHeight.percent(175),
+      letterSpacing: 0.35,
+      color: colorScheme.onSurface,
     ),
     'body': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
     'a': Style(
-      color: Theme.of(context).colorScheme.primary,
+      color: colorScheme.primary,
       textDecoration: TextDecoration.none,
     ),
     'br': Style(
       lineHeight: LineHeight.percent(-1),
     ),
     'p': Style(
-      margin: Margins.only(bottom: 4),
+      margin: Margins.only(bottom: 12),
+      lineHeight: LineHeight.percent(175),
     ),
     'span': Style(
-      fontSize: FontSize.large,
-      height: Height(1.8),
+      height: Height(1.75),
     ),
     'div': Style(height: Height.auto()),
     'li > p': Style(
       display: Display.inline,
     ),
     'li': Style(
-      padding: HtmlPaddings.only(bottom: 4),
-      textAlign: TextAlign.justify,
+      padding: HtmlPaddings.only(bottom: 6),
+      lineHeight: LineHeight.percent(170),
     ),
-    'img': Style(margin: Margins.only(top: 4, bottom: 4)),
-    'h1,h2': Style(
-      fontSize: FontSize.xLarge,
-      fontWeight: FontWeight.bold,
-      margin: Margins.only(bottom: 8),
+    'img': Style(
+      margin: Margins.symmetric(vertical: 8),
+      alignment: Alignment.center,
     ),
-    'h3,h4,h5': Style(
-      fontSize: FontSize(16),
+    'h1': Style(
+      fontSize: FontSize(22),
       fontWeight: FontWeight.bold,
-      margin: Margins.only(bottom: 4),
+      margin: Margins.only(top: 20, bottom: 10),
+      lineHeight: LineHeight.percent(140),
+    ),
+    'h2': Style(
+      fontSize: FontSize(20),
+      fontWeight: FontWeight.bold,
+      margin: Margins.only(top: 18, bottom: 8),
+      lineHeight: LineHeight.percent(140),
+    ),
+    'h3,h4,h5,h6': Style(
+      fontSize: FontSize(17),
+      fontWeight: FontWeight.w600,
+      margin: Margins.only(top: 14, bottom: 6),
+      lineHeight: LineHeight.percent(140),
+    ),
+    'blockquote': Style(
+      margin: Margins.symmetric(vertical: 10),
+      padding: HtmlPaddings.only(left: 12, right: 10, top: 8, bottom: 8),
+      backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      border: Border(
+        left: BorderSide(
+          color: colorScheme.primary.withValues(alpha: 0.7),
+          width: 3.5,
+        ),
+      ),
+    ),
+    'code': Style(
+      backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      padding: HtmlPaddings.symmetric(horizontal: 5, vertical: 2),
+      fontFamily: 'monospace',
+      fontSize: FontSize(14),
+    ),
+    'pre': Style(
+      backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+      padding: HtmlPaddings.all(12),
+      margin: Margins.symmetric(vertical: 8),
+      borderRadius: const BorderRadius.all(Radius.circular(8)),
+    ),
+    'hr': Style(
+      margin: Margins.symmetric(vertical: 16),
+      border: Border(
+        bottom: BorderSide(
+          color: theme.dividerColor.withValues(alpha: 0.15),
+          width: 1,
+        ),
+      ),
     ),
     'figcaption': Style(
-      fontSize: FontSize.large,
+      fontSize: FontSize(13),
+      color: colorScheme.outline,
       textAlign: TextAlign.center,
+      margin: Margins.only(top: 4, bottom: 8),
     ),
     'strong': Style(fontWeight: FontWeight.bold),
     'figure': Style(
