@@ -11,7 +11,6 @@ export 'package:PiliPlus/bili_feed/model/bili_feed_video_item.dart';
 export 'package:PiliPlus/bili_feed/page/bili_feed_controller.dart';
 export 'package:PiliPlus/bili_feed/page/bili_feed_setting_view.dart';
 export 'package:PiliPlus/bili_feed/page/bili_feed_view.dart';
-export 'package:PiliPlus/bili_feed/page/bili_help_faq_view.dart';
 
 /// BiliFeedHook 是专门向上游暴露的极简静态门面类（Facade）
 /// 使得上游代码（如 SearchVideoController）只需一行 Hook 调用，实现与定制逻辑的完全解耦

@@ -287,22 +287,7 @@ class SearchVideoController
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('仅匹配标题关键词', style: TextStyle(fontSize: 16)),
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          icon: Icon(
-                            Icons.help_outline_rounded,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          tooltip: '四维筛选语法说明',
-                          onPressed: () => BiliHelpFaqSheet.show(context),
-                        ),
-                      ],
-                    ),
+                    const Text('仅匹配标题关键词', style: TextStyle(fontSize: 16)),
                     Obx(
                       () => Switch(
                         value: titleMatchOnly.value,
