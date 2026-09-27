@@ -1037,7 +1037,6 @@ Widget opusCollection(ThemeData theme, ModuleCollection item) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Material(
-      borderRadius: const BorderRadius.all(Radius.circular(10)),
       color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: const BorderRadius.all(Radius.circular(10)),
@@ -1045,6 +1044,7 @@ Widget opusCollection(ThemeData theme, ModuleCollection item) {
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
         ),
       ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         borderRadius: const BorderRadius.all(Radius.circular(10)),
         onTap: () => Get.toNamed(
