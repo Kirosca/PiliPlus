@@ -153,7 +153,7 @@ abstract final class BiliExportService {
 
     try {
       final exportDir = await getExportDirectory();
-      final title = entry.title.isNotEmpty ? entry.title : (entry.downloadSubtitle ?? 'video');
+      final title = entry.showTitle.isNotEmpty ? entry.showTitle : (entry.title.isNotEmpty ? entry.title : 'video');
       final author = entry.ownerName?.isNotEmpty == true ? '[${entry.ownerName}] ' : '';
       final pagePart = (entry.pageData?.page != null && entry.pageData!.page! > 1)
           ? '_P${entry.pageData!.page}'
@@ -198,7 +198,7 @@ abstract final class BiliExportService {
 
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
-      final currentTitle = item.title.isNotEmpty ? item.title : (item.downloadSubtitle ?? '视频');
+      final currentTitle = item.showTitle.isNotEmpty ? item.showTitle : (item.title.isNotEmpty ? item.title : '视频');
       SmartDialog.showLoading(
         msg: '正在导出 (${i + 1}/${items.length})\n$currentTitle',
       );
