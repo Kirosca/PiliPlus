@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:PiliPlus/bili_feed/core/bili_export_service.dart';
 import 'package:PiliPlus/common/widgets/appbar/appbar.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/flutter/pop_scope.dart';
@@ -98,6 +99,23 @@ class _DownloadDetailPageState extends State<DownloadDetailPage>
           appBar: MultiSelectAppBarWidget(
             ctr: this,
             actions: [
+              TextButton(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () {
+                  BiliExportService.exportBatch(
+                    allChecked.toList(),
+                    onComplete: () {
+                      handleSelect();
+                    },
+                  );
+                },
+                child: Text(
+                  '导出',
+                  style: TextStyle(color: colorScheme.onSurface),
+                ),
+              ),
               TextButton(
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,

@@ -58,6 +58,7 @@ import 'package:PiliPlus/pages/setting/pages/display_mode.dart';
 import 'package:PiliPlus/pages/setting/pages/font_setting.dart';
 import 'package:PiliPlus/pages/setting/pages/logs.dart';
 import 'package:PiliPlus/bili_feed/page/bili_feed_setting_view.dart';
+import 'package:PiliPlus/bili_feed/page/bili_help_faq_view.dart';
 import 'package:PiliPlus/pages/setting/pages/play_speed_set.dart';
 import 'package:PiliPlus/pages/setting/view.dart';
 import 'package:PiliPlus/pages/settings_search/view.dart';
@@ -160,6 +161,10 @@ class Routes {
     GetPage(
       name: '/curatedFeedSetting',
       page: () => const CuratedFeedSettingPage(),
+    ),
+    GetPage(
+      name: '/helpFaq',
+      page: () => const BiliHelpFaqPage(),
     ),
     GetPage(name: '/upowerRank', page: () => const UpowerRankPage()),
     GetPage(name: '/spaceSetting', page: () => const SpaceSettingPage()),

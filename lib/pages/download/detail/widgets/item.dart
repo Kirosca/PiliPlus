@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:PiliPlus/bili_feed/core/bili_export_service.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
@@ -77,6 +78,13 @@ class DetailItem extends StatelessWidget {
                     );
                   },
                   child: const Text('删除', style: TextStyle(fontSize: 14)),
+                ),
+                DialogOption(
+                  onPressed: () {
+                    Get.back();
+                    BiliExportService.exportSingle(entry);
+                  },
+                  child: const Text('导出为 MP4 文件', style: TextStyle(fontSize: 14)),
                 ),
                 DialogOption(
                   onPressed: () async {

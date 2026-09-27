@@ -21,9 +21,15 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Icon;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.media.MediaMuxer;
+import android.media.MediaScannerConnection;
 import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Rational;
@@ -345,6 +351,121 @@ public final class AndroidHelper {
             return null;
         } catch (Exception e) {
             return e.toString();
+        }
+    }
+
+    public static String getPublicDownloadDir() {
+        try {
+            java.io.File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            java.io.File piliDir = new java.io.File(dir, "PiliPlus");
+            if (!piliDir.exists()) {
+                piliDir.mkdirs();
+            }
+            return piliDir.getAbsolutePath();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static boolean muxVideoAudio(String videoPath, String audioPath, String outputPath) {
+        MediaExtractor videoExtractor = null;
+        MediaExtractor audioExtractor = null;
+        MediaMuxer muxer = null;
+        try {
+            java.io.File outFile = new java.io.File(outputPath);
+            java.io.File parent = outFile.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
+            videoExtractor = new MediaExtractor();
+            videoExtractor.setDataSource(videoPath);
+
+            audioExtractor = new MediaExtractor();
+            audioExtractor.setDataSource(audioPath);
+
+            muxer = new MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+
+            int muxerVideoTrackIndex = -1;
+            for (int i = 0; i < videoExtractor.getTrackCount(); i++) {
+                MediaFormat format = videoExtractor.getTrackFormat(i);
+                String mime = format.getString(MediaFormat.KEY_MIME);
+                if (mime != null && mime.startsWith("video/")) {
+                    videoExtractor.selectTrack(i);
+                    muxerVideoTrackIndex = muxer.addTrack(format);
+                    break;
+                }
+            }
+
+            int muxerAudioTrackIndex = -1;
+            for (int i = 0; i < audioExtractor.getTrackCount(); i++) {
+                MediaFormat format = audioExtractor.getTrackFormat(i);
+                String mime = format.getString(MediaFormat.KEY_MIME);
+                if (mime != null && mime.startsWith("audio/")) {
+                    audioExtractor.selectTrack(i);
+                    muxerAudioTrackIndex = muxer.addTrack(format);
+                    break;
+                }
+            }
+
+            if (muxerVideoTrackIndex == -1 && muxerAudioTrackIndex == -1) {
+                return false;
+            }
+
+            muxer.start();
+
+            int maxBufferSize = 1024 * 1024;
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocateDirect(maxBufferSize);
+            MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+
+            if (muxerVideoTrackIndex != -1) {
+                while (true) {
+                    bufferInfo.offset = 0;
+                    bufferInfo.size = videoExtractor.readSampleData(buffer, 0);
+                    if (bufferInfo.size < 0) {
+                        break;
+                    }
+                    bufferInfo.presentationTimeUs = videoExtractor.getSampleTime();
+                    bufferInfo.flags = videoExtractor.getSampleFlags();
+                    muxer.writeSampleData(muxerVideoTrackIndex, buffer, bufferInfo);
+                    videoExtractor.advance();
+                }
+            }
+
+            if (muxerAudioTrackIndex != -1) {
+                while (true) {
+                    bufferInfo.offset = 0;
+                    bufferInfo.size = audioExtractor.readSampleData(buffer, 0);
+                    if (bufferInfo.size < 0) {
+                        break;
+                    }
+                    bufferInfo.presentationTimeUs = audioExtractor.getSampleTime();
+                    bufferInfo.flags = audioExtractor.getSampleFlags();
+                    muxer.writeSampleData(muxerAudioTrackIndex, buffer, bufferInfo);
+                    audioExtractor.advance();
+                }
+            }
+
+            muxer.stop();
+
+            Context ctx = getContext();
+            if (ctx != null) {
+                MediaScannerConnection.scanFile(ctx, new String[]{outputPath}, new String[]{"video/mp4"}, null);
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            try {
+                if (muxer != null) muxer.release();
+            } catch (Exception ignored) {}
+            try {
+                if (videoExtractor != null) videoExtractor.release();
+            } catch (Exception ignored) {}
+            try {
+                if (audioExtractor != null) audioExtractor.release();
+            } catch (Exception ignored) {}
         }
     }
 

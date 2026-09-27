@@ -307,6 +307,11 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
         title: const Text('选推规则管理'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: '四维语法说明与 FAQ',
+            onPressed: () => Get.toNamed('/helpFaq'),
+          ),
+          IconButton(
             icon: const Icon(Icons.import_export_outlined),
             tooltip: '导入/导出规则',
             onPressed: _showImportExport,

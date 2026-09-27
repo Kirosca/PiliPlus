@@ -204,6 +204,13 @@ Commit Hash: ${BuildConfig.commitHash}''',
             trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
           ),
           ListTile(
+            onTap: () => Get.toNamed('/helpFaq'),
+            leading: const Icon(Icons.help_outline_rounded),
+            title: const Text('使用说明与 FAQ'),
+            subtitle: Text('四维去噪筛选语法与常见问题解答', style: subTitleStyle),
+            trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
+          ),
+          ListTile(
             onTap: () => PageUtils.launchURL(Constants.afdianUrl),
             leading: const Icon(
               Icons.favorite_outline,
