@@ -177,39 +177,6 @@ class _BiliHelpFaqPageState extends State<BiliHelpFaqPage>
           colorScheme: colorScheme,
         ),
 
-        const SizedBox(height: 12),
-
-        Card(
-          elevation: 0,
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.25),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline, size: 18, color: colorScheme.outline),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '说明：当前去噪引擎专为移动端极速执行优化，仅支持「空格」、「-」、「#」、「@」四类符号，暂未引入「|」或语法或复杂括号嵌套。如需检索多个不同主题，建议分条创建独立规则。',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.45,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
         const SizedBox(height: 16),
         _buildSectionHeader(Icons.compare_arrows_rounded, '进阶：整词 vs 空格对比', colorScheme),
         const SizedBox(height: 8),
@@ -283,19 +250,6 @@ class _BiliHelpFaqPageState extends State<BiliHelpFaqPage>
           answer:
               '• 官方推荐流：由 B 站算法推送，容易受到近期点击和信息流算法影响；\n'
               '• 自定义选推流：完全由你掌控！在【设置 -> 选推规则管理】中配置你关注的关键词、Tag 或 UP 主。系统会自动按等比平分抽取各个规则的内容，并打乱呈现，打造专属精品信息流。',
-          colorScheme: colorScheme,
-        ),
-        _buildFaqItem(
-          icon: Icons.code_rounded,
-          question: '是否支持「|」或语法或复杂逻辑嵌套？',
-          answer:
-              '目前不支持「|」或语法及括号逻辑嵌套。\n\n'
-              '当前过滤引擎专为手机端高性能设计，遵循四维符号规范：\n'
-              '• 【空格】：正向多词必含（AND 逻辑，每个词均须命中标题）\n'
-              '• 【-】：负向排除词（NOT 逻辑，命中立即一票否决）\n'
-              '• 【#】：分类标签过滤（精准匹配视频 Tag）\n'
-              '• 【@】：指定 UP 主白名单（匹配视频发布者）\n\n'
-              '若需要检索多个不同分类，建议在【选推规则管理】中建立多条独立规则，选推流会自动轮询打乱呈现。',
           colorScheme: colorScheme,
         ),
         _buildFaqItem(
@@ -583,7 +537,7 @@ abstract final class BiliHelpFaqSheet {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '💡 支持「空格」、「-」、「#」、「@」四类符号，暂不支持「|」或语法。多词用空格分隔表示必须全部包含。',
+                          '💡 进阶技巧：整词匹配视频较少时，将关键词用空格隔开搜索（如“余华 活着”比“余华大师课活着”多搜出数倍干货视频）。',
                           style: TextStyle(fontSize: 12, color: colorScheme.primary),
                         ),
                       ),
