@@ -18,10 +18,57 @@ abstract final class BiliExportService {
         .replaceAll(RegExp(r'[\/\\:\*\?"<>\|\r\n\t]'), '_')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
-    if (clean.length > 80) {
-      clean = clean.substring(0, 80).trim();
+    if (clean.length > 120) {
+      clean = clean.substring(0, 120).trim();
     }
     return clean.isEmpty ? 'video_${DateTime.now().millisecondsSinceEpoch}' : clean;
+  }
+
+  /// 构建规范导出文件名（以视频完整标题为准，支持分P与剧集集数）
+  static String buildExportFileName(BiliDownloadEntryInfo entry) {
+    // 1. 优先获取视频主标题
+    String mainTitle = entry.title.trim();
+    if (mainTitle.isEmpty) {
+      mainTitle = entry.showTitle.trim();
+    }
+    if (mainTitle.isEmpty) {
+      mainTitle = 'video_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    // 2. 处理番剧/影视 (ep)
+    if (entry.ep case final ep?) {
+      final epPart = ep.showTitle?.trim() ??
+          (ep.index.isNotEmpty ? '第${ep.index}话 ${ep.indexTitle}'.trim() : '');
+      if (epPart.isNotEmpty && !mainTitle.contains(epPart)) {
+        return sanitizeFileName('${mainTitle}_$epPart');
+      }
+      return sanitizeFileName(mainTitle);
+    }
+
+    // 3. 处理分 P 视频
+    final pageData = entry.pageData;
+    if (pageData != null) {
+      final page = pageData.page;
+      final part = pageData.part?.trim();
+
+      final hasDistinctPart = part != null &&
+          part.isNotEmpty &&
+          part != mainTitle &&
+          part != '$page';
+
+      if (page > 1) {
+        if (hasDistinctPart) {
+          return sanitizeFileName('${mainTitle}_P${page}_$part');
+        } else {
+          return sanitizeFileName('${mainTitle}_P$page');
+        }
+      } else if (hasDistinctPart) {
+        return sanitizeFileName('${mainTitle}_P1_$part');
+      }
+    }
+
+    // 4. 普通单视频：直接为完整视频标题
+    return sanitizeFileName(mainTitle);
   }
 
   /// 获取导出目标公共目录
@@ -153,12 +200,7 @@ abstract final class BiliExportService {
 
     try {
       final exportDir = await getExportDirectory();
-      final title = entry.showTitle.isNotEmpty ? entry.showTitle : (entry.title.isNotEmpty ? entry.title : 'video');
-      final author = entry.ownerName?.isNotEmpty == true ? '[${entry.ownerName}] ' : '';
-      final pagePart = (entry.pageData?.page != null && entry.pageData!.page! > 1)
-          ? '_P${entry.pageData!.page}'
-          : '';
-      final safeName = sanitizeFileName('$author$title$pagePart');
+      final safeName = buildExportFileName(entry);
       final outPath = await getUniqueOutputPath(exportDir, safeName);
 
       final success = await muxOrCopy(
@@ -198,7 +240,7 @@ abstract final class BiliExportService {
 
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
-      final currentTitle = item.showTitle.isNotEmpty ? item.showTitle : (item.title.isNotEmpty ? item.title : '视频');
+      final currentTitle = item.title.isNotEmpty ? item.title : item.showTitle;
       SmartDialog.showLoading(
         msg: '正在导出 (${i + 1}/${items.length})\n$currentTitle',
       );
@@ -210,11 +252,7 @@ abstract final class BiliExportService {
           continue;
         }
 
-        final author = item.ownerName?.isNotEmpty == true ? '[${item.ownerName}] ' : '';
-        final pagePart = (item.pageData?.page != null && item.pageData!.page! > 1)
-            ? '_P${item.pageData!.page}'
-            : '';
-        final safeName = sanitizeFileName('$author$currentTitle$pagePart');
+        final safeName = buildExportFileName(item);
         final outPath = await getUniqueOutputPath(exportDir, safeName);
 
         final ok = await muxOrCopy(
