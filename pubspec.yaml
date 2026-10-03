@@ -21,7 +21,7 @@ version: 2.1.5+1
 
 environment:
   sdk: ">=3.13.0"
-  flutter: 3.47.5
+  flutter: 3.47.6
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -216,7 +216,7 @@ dependency_overrides:
       ref: native
   media_kit_video:
     git:
-      url: https://github.com/My-Responsitories/media-kit.git
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
       path: media_kit_video
       ref: native
   cached_network_image_ce:
