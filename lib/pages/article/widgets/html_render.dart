@@ -47,17 +47,20 @@ Widget htmlRender({
               borderRadius: const BorderRadius.all(Radius.circular(8)),
               child: CachedNetworkImage(
                 width: maxWidth,
+                gaplessPlayback: true,
                 memCacheWidth: maxWidth.cacheSize(context),
                 height: height != null ? double.parse(height) : null,
                 imageUrl: ImageUtils.thumbnailUrl(imgUrl),
                 fit: BoxFit.contain,
                 placeholder: (_, _) => const SizedBox.shrink(),
               ),
+            
             );
           }
           final width = isEmote ? 22.0 : maxWidth;
           Widget imageWidget = CachedNetworkImage(
             width: width,
+            gaplessPlayback: true,
             height: isEmote ? 22.0 : null,
             memCacheWidth: width.cacheSize(context),
             imageUrl: ImageUtils.thumbnailUrl(imgUrl, 60),
