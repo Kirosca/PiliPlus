@@ -110,6 +110,10 @@ abstract final class BiliFilterEngine {
           if (seenVideoIds.contains(idKey)) {
             return false;
           }
+          // 容量保护：超过 1500 条时淘汰最早记录的 300 条，防止长时间挂起内存膨胀
+          if (seenVideoIds.length >= 1500) {
+            seenVideoIds.removeAll(seenVideoIds.take(300).toList());
+          }
           seenVideoIds.add(idKey);
         }
       }

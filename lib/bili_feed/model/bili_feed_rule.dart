@@ -116,6 +116,22 @@ class BiliFeedStorage {
     }
   }
 
+  /// 批量更新多词条游标，单次刷新仅触发 1 次持久化
+  static Future<void> updateRulePages(Map<String, int> pageMap) async {
+    if (pageMap.isEmpty) return;
+    final rules = getRules();
+    bool changed = false;
+    for (final rule in rules) {
+      if (pageMap.containsKey(rule.id) && rule.currentPage != pageMap[rule.id]) {
+        rule.currentPage = pageMap[rule.id]!;
+        changed = true;
+      }
+    }
+    if (changed) {
+      await saveRules(rules);
+    }
+  }
+
   static Future<void> saveLastFeedItems(
       List<BiliFeedVideoItemModel> items) async {
     try {

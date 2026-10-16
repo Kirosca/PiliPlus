@@ -32,7 +32,6 @@ class _KeywordWorker {
     searchController.page = 1;
     searchController.isEnd = false;
     rule.currentPage = 1;
-    BiliFeedStorage.updateRulePage(rule.id, 1);
     buffer.clear();
   }
 
@@ -41,11 +40,10 @@ class _KeywordWorker {
     while (buffer.length < targetCount && attempts < 4) {
       attempts++;
       if (searchController.isEnd) {
-        // 枯竭从头循环：重置到第 1 页
+        // 枯竭从头循环：内存中重置到第 1 页，后续批处理统一落盘
         searchController.page = 1;
         searchController.isEnd = false;
         rule.currentPage = 1;
-        BiliFeedStorage.updateRulePage(rule.id, 1);
       }
 
       final res = await searchController.customGetData();
@@ -56,7 +54,6 @@ class _KeywordWorker {
           searchController.isEnd = true;
           searchController.page = 1;
           rule.currentPage = 1;
-          BiliFeedStorage.updateRulePage(rule.id, 1);
           break;
         }
 
@@ -64,7 +61,6 @@ class _KeywordWorker {
         final filtered = searchController.getDataList(response);
         searchController.page++;
         rule.currentPage = searchController.page;
-        BiliFeedStorage.updateRulePage(rule.id, rule.currentPage);
 
         if (filtered != null && filtered.isNotEmpty) {
           // 选推专属额外筛选层：剔除课堂视频（PUGV）与充电视频（充电专属）
@@ -79,11 +75,11 @@ class _KeywordWorker {
               break;
             }
           } else {
-            await Future.delayed(const Duration(milliseconds: 100));
+            await Future.delayed(const Duration(milliseconds: 200));
           }
         } else {
-          // 复用搜索控制器同款 100ms 拟人化呼吸防风控间隔
-          await Future.delayed(const Duration(milliseconds: 100));
+          // 拟人化呼吸防风控间隔
+          await Future.delayed(const Duration(milliseconds: 200));
         }
       } else {
         break;
@@ -113,6 +109,14 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
   final List<_KeywordWorker> _workers = [];
   final List<BiliFeedVideoItemModel> items = [];
   final Set<String> _globalSeenIds = {};
+
+  void _addSeenId(String idKey) {
+    if (idKey.isEmpty) return;
+    if (_globalSeenIds.length >= 1500) {
+      _globalSeenIds.removeAll(_globalSeenIds.take(300).toList());
+    }
+    _globalSeenIds.add(idKey);
+  }
   String _rulesFingerprint = '';
 
   int? lastRefreshAt;
@@ -156,7 +160,7 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
             : (item.aid != null && item.aid != 0)
                 ? item.aid.toString()
                 : '';
-        if (key.isNotEmpty) _globalSeenIds.add(key);
+        if (key.isNotEmpty) _addSeenId(key);
       }
       loadingState.value = Success(List<BiliFeedVideoItemModel>.from(items));
     } else {
@@ -207,7 +211,7 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
     for (final worker in _workers) {
       if (worker.buffer.length < minTargetPerWorker) {
         await worker.replenish(minTargetPerWorker);
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(const Duration(milliseconds: 200));
       }
     }
 
@@ -225,7 +229,7 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
             continue;
           }
           if (idKey.isNotEmpty) {
-            _globalSeenIds.add(idKey);
+            _addSeenId(idKey);
           }
           batch.add(BiliFeedVideoItemModel.fromSearchItem(
             item,
@@ -252,7 +256,7 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
             continue;
           }
           if (idKey.isNotEmpty) {
-            _globalSeenIds.add(idKey);
+            _addSeenId(idKey);
           }
           batch.add(BiliFeedVideoItemModel.fromSearchItem(
             item,
@@ -262,6 +266,13 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
         }
       }
     }
+
+    // 批量落盘所有有变动的词条游标，单次拉取仅触发 1 次持久化
+    final Map<String, int> pagesToUpdate = {};
+    for (final worker in _workers) {
+      pagesToUpdate[worker.rule.id] = worker.rule.currentPage;
+    }
+    await BiliFeedStorage.updateRulePages(pagesToUpdate);
 
     // 3. 随机打散交织
     batch.shuffle(math.Random());
@@ -339,6 +350,7 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
     for (final w in _workers) {
       w.reset();
     }
+    await BiliFeedStorage.updateRulePages({for (final w in _workers) w.rule.id: 1});
     await onLoadMore();
   }
 

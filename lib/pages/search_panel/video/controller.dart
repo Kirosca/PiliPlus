@@ -97,7 +97,8 @@ class SearchVideoController
     try {
       while (!isEnd && _consecutiveEmptyCount < 4) {
         if (_consecutiveEmptyCount > 0) {
-          await Future.delayed(const Duration(milliseconds: 100));
+          // 拟人化呼吸延时，平缓补页频率，规避连续高速请求触发服务端频控
+          await Future.delayed(const Duration(milliseconds: 250));
         }
         final LoadingState<SearchVideoData> res = await customGetData();
         if (res case Success(:final response)) {
@@ -143,6 +144,8 @@ class SearchVideoController
             break;
           }
         } else {
+          // 遇到接口报错或异常（如 412/风控/网络中断），立即熔断终止补页循环
+          isEnd = true;
           if (isRefresh && !handleError(res is Error ? res.errMsg : null)) {
             loadingState.value = res as Error;
           }
