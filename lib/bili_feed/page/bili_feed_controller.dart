@@ -75,11 +75,11 @@ class _KeywordWorker {
               break;
             }
           } else {
-            await Future.delayed(const Duration(milliseconds: 200));
+            await Future.delayed(const Duration(milliseconds: 100));
           }
         } else {
-          // 拟人化呼吸防风控间隔
-          await Future.delayed(const Duration(milliseconds: 200));
+          // 复用搜索控制器同款 100ms 拟人化呼吸防风控间隔
+          await Future.delayed(const Duration(milliseconds: 100));
         }
       } else {
         break;
@@ -211,7 +211,7 @@ class BiliFeedController extends GetxController with ScrollOrRefreshMixin {
     for (final worker in _workers) {
       if (worker.buffer.length < minTargetPerWorker) {
         await worker.replenish(minTargetPerWorker);
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(const Duration(milliseconds: 100));
       }
     }
 

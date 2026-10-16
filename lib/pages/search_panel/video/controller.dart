@@ -97,8 +97,7 @@ class SearchVideoController
     try {
       while (!isEnd && _consecutiveEmptyCount < 4) {
         if (_consecutiveEmptyCount > 0) {
-          // 拟人化呼吸延时，平缓补页频率，规避连续高速请求触发服务端频控
-          await Future.delayed(const Duration(milliseconds: 250));
+          await Future.delayed(const Duration(milliseconds: 100));
         }
         final LoadingState<SearchVideoData> res = await customGetData();
         if (res case Success(:final response)) {
