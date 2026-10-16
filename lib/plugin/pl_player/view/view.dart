@@ -1107,18 +1107,16 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       }
     } else if (_gestureType == .right) {
       // 右边区域
-      final double level = maxHeight * 0.5;
       EasyThrottle.throttle(
         'setVolume',
         const Duration(milliseconds: 20),
-        () {
-          final double volume = clampDouble(
-            plPlayerController.volume.value - delta.dy / level,
+        () => plPlayerController.setVolume(
+          clampDouble(
+            plPlayerController.volume.value - delta.dy / (maxHeight * 0.5),
             0.0,
             plPlayerController.maxVolume,
-          );
-          plPlayerController.setVolume(volume);
-        },
+          ),
+        ),
       );
     }
   }
@@ -1309,18 +1307,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         return;
       }
 
-      final double level = maxHeight * 0.5;
       EasyThrottle.throttle(
         'setVolume',
         const Duration(milliseconds: 20),
-        () {
-          final double volume = clampDouble(
-            plPlayerController.volume.value - event.localPanDelta.dy / level,
+        () => plPlayerController.setVolume(
+          clampDouble(
+            plPlayerController.volume.value -
+                event.localPanDelta.dy / (maxHeight * 0.5),
             0.0,
             plPlayerController.maxVolume,
-          );
-          plPlayerController.setVolume(volume);
-        },
+          ),
+        ),
       );
     }
   }

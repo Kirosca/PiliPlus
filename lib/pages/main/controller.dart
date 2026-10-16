@@ -311,12 +311,10 @@ class MainController extends GetxController
         EasyThrottle.throttle(
           'topOrRefresh',
           const Duration(milliseconds: 500),
-          () {
-            if (currentNav == NavigationBarType.home) {
-              homeController.onRefresh();
-            } else if (currentNav == NavigationBarType.dynamics) {
-              dynamicController.onRefresh();
-            }
+          () => switch (currentNav) {
+            .home => homeController.onRefresh(),
+            .dynamics => dynamicController.onRefresh(),
+            .mine => null,
           },
         );
       } else {
