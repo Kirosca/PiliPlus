@@ -842,7 +842,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                       }
                     },
                     child: Text(
-                      item.newDesc ?? '',
+                      item.newDesc ?? item.quality.toString(),
                       style: enabled
                           ? const TextStyle(color: Colors.white, fontSize: 13)
                           : const TextStyle(

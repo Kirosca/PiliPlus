@@ -1075,4 +1075,10 @@ abstract final class Pref {
           ?.map<MineTabType>((index) => .values[index])
           .toSet() ??
       MineTabType.kDefault;
+
+  static bool get blockAtOnlyReply =>
+      _setting.get(SettingBoxKey.blockAtOnlyReply, defaultValue: false);
+
+  static int? get blockReplyAtCount =>
+      _setting.get(SettingBoxKey.blockReplyAtCount);
 }

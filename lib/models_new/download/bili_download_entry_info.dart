@@ -1,3 +1,5 @@
+import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models_new/download/download_info.dart';
 import 'package:PiliPlus/models_new/sponsor_block/segment_item.dart';
@@ -64,6 +66,16 @@ class BiliDownloadEntryInfo with MultiSelectData {
     }
     return title;
   }
+
+  Widget get qaBadge => PBadge(
+    text: videoQuality != null
+        ? VideoQuality.safeFromCode(videoQuality!)?.shortDesc ??
+              qualityPithyDescription
+        : qualityPithyDescription,
+    right: 6.0,
+    top: 6.0,
+    type: .gray,
+  );
 
   DownloadPageInfo toDownloadPageInfo(String pageId, {int? sortKey}) =>
       DownloadPageInfo(

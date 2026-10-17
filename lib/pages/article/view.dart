@@ -17,6 +17,7 @@ import 'package:PiliPlus/pages/article/controller.dart';
 import 'package:PiliPlus/pages/article/widgets/article_ops.dart';
 import 'package:PiliPlus/pages/article/widgets/html_render.dart';
 import 'package:PiliPlus/pages/article/widgets/opus_content.dart';
+import 'package:PiliPlus/pages/article/widgets/sliver_list_ext.dart';
 import 'package:PiliPlus/pages/article/widgets/sliver_to_box_adapter.dart';
 import 'package:PiliPlus/pages/common/dyn/common_dyn_page.dart';
 import 'package:PiliPlus/pages/dynamics_repost/view.dart';
@@ -55,6 +56,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage>
   dynamic get arguments => {'id': controller.id};
 
   UniqueKey? _centerKey;
+  bool get reverse => _centerKey != null;
 
   @override
   void initState() {
@@ -191,6 +193,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage>
               images: controller.images,
               maxWidth: maxWidth,
               opusId: controller.id,
+              reverse: reverse,
             );
           } else if (controller.opusData?.modules.moduleBlocked
               case final moduleBlocked?) {
@@ -202,6 +205,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage>
             if (controller.articleData?.type == 3) {
               // json
               return ArticleOpus(
+                reverse: reverse,
                 ops: controller.articleData?.ops,
                 maxWidth: maxWidth,
               );
@@ -217,7 +221,8 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage>
                 ),
               );
             } else {
-              content = SliverList.separated(
+              content = SliverListExt.separated(
+                reverse: reverse,
                 itemCount: res.body!.children.length,
                 itemBuilder: (context, index) {
                   return htmlRender(

@@ -12,7 +12,6 @@ import 'package:PiliPlus/common/widgets/select_mask.dart';
 import 'package:PiliPlus/models/common/badge_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/segment_type.dart';
 import 'package:PiliPlus/models/common/video/source_type.dart';
-import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/models_new/download/bili_download_entry_info.dart';
 import 'package:PiliPlus/pages/common/multi_select/base.dart';
 import 'package:PiliPlus/pages/download/downloading/view.dart';
@@ -250,13 +249,7 @@ class DetailItem extends StatelessWidget {
                       },
                     ),
                   ),
-                  if (entry.videoQuality case final videoQuality?)
-                    PBadge(
-                      text: VideoQuality.fromCode(videoQuality).shortDesc,
-                      right: 6.0,
-                      top: 6.0,
-                      type: PBadgeType.gray,
-                    ),
+                  entry.qaBadge,
                   if (progress != null)
                     ListenableBuilder(
                       listenable: progress!,
