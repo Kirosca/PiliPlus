@@ -219,7 +219,7 @@ abstract final class BiliUpdate {
                         SmartDialog.dismiss();
                         PageUtils.launchURL(Constants.giteeReleasesUrl);
                       },
-                      icon: const Icon(CustomIcons.gitee, size: 18),
+                      icon: const Icon(FontAwesomeIcons.git, size: 18),
                       label: const Text('Gitee'),
                     ),
                   ],

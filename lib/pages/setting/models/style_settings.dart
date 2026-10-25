@@ -84,6 +84,14 @@ List<SettingsModel> get styleSettings => [
     defaultVal: false,
     needReboot: true,
   ),
+  const SwitchModel(
+    title: '隐藏侧边栏文字',
+    subtitle: '仅显示图标，减少侧边栏占用宽度',
+    leading: Icon(Icons.label_off_outlined),
+    setKey: SettingBoxKey.hideSideBarLabel,
+    defaultVal: false,
+    needReboot: true,
+  ),
   NormalModel(
     title: 'App字体设置',
     subtitle: '点击设置',
@@ -741,7 +749,7 @@ void _setDynBadge(DynamicBadgeMode value, VoidCallback setState) {
       .whenComplete(setState);
 }
 
-Future<void> _setMsgBadge(DynamicBadgeMode value, VoidCallback setState) async {
+void _setMsgBadge(DynamicBadgeMode value, VoidCallback setState) {
   final mainController = Get.find<MainController>()..msgBadgeMode = value;
   if (value != DynamicBadgeMode.hidden) {
     mainController.queryUnreadMsg(true);
