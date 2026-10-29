@@ -42,6 +42,25 @@ void main() {
       expect(branch[1].val, '官方');
     });
 
+    test('方案1严格成对引号与单侧未闭合平滑退化', () {
+      // 1. 成对闭合：严格判定为精确匹配
+      final qPaired = BiliFilterEngine.parseSearchQuery('#"vue 3"');
+      expect(qPaired.branches.first.first.isExact, isTrue);
+      expect(qPaired.branches.first.first.val, 'vue 3');
+
+      // 2. 单侧未闭合：剥除孤立引号并平滑退化为普通模糊匹配
+      final qUnclosed = BiliFilterEngine.parseSearchQuery('#"vue 3');
+      expect(qUnclosed.branches.first.first.isExact, isFalse);
+      expect(qUnclosed.branches.first.first.val, 'vue 3');
+
+      // 3. 单侧未闭合排除：平滑退化为普通模糊排除 -#vue
+      final qNeg = BiliFilterEngine.parseSearchQuery('-#"vue');
+      expect(qNeg.exclusions.first.isNeg, isTrue);
+      expect(qNeg.exclusions.first.isExact, isFalse);
+      expect(qNeg.exclusions.first.target, FilterTarget.tag);
+      expect(qNeg.exclusions.first.val, 'vue');
+    });
+
     test('带空格精确短语: "deepseek v3"', () {
       final query = BiliFilterEngine.parseSearchQuery('"deepseek v3"');
       expect(query.branches.length, 1);
