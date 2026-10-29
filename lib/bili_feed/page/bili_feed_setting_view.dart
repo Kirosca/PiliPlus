@@ -65,13 +65,13 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
                 controller: textController,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  hintText: '例: TED演讲 或 #余华 或 @影视飓风',
+                  hintText: '例: 猫 | 狗 或 #余华 或 @影视飓风 -#手游',
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               const Text(
-                '支持四维语法：空格(必含)、-词(排除)、@UP主(作者)、#标签(Tag)',
+                '支持高级筛选语法：空格(必含)、| (或者条件)、-词(三维排除)、@UP主、#标签、"精确短语"',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],

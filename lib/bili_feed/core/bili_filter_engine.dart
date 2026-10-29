@@ -3,53 +3,239 @@ import 'package:PiliPlus/models/search/result.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 
-/// BiliFeed 统一过滤与关键词处理引擎
-/// 负责搜索词脱壳提纯、繁简归一化、多条件布尔过滤、充电/课堂视频拦截以及视频实体去重
+enum FilterTarget { title, tag, author }
+
+class FilterToken {
+  final bool isNeg;
+  final FilterTarget target;
+  final bool isExact;
+  final String val;
+
+  const FilterToken({
+    required this.isNeg,
+    required this.target,
+    required this.isExact,
+    required this.val,
+  });
+
+  @override
+  String toString() =>
+      'FilterToken(isNeg: $isNeg, target: $target, isExact: $isExact, val: $val)';
+}
+
+class SearchFilterQuery {
+  final List<FilterToken> exclusions;
+  final List<List<FilterToken>> branches;
+  final bool hasRules;
+
+  const SearchFilterQuery({
+    required this.exclusions,
+    required this.branches,
+    required this.hasRules,
+  });
+}
+
+/// BiliFeed 统一过滤与关键词处理引擎（2.2 高级布尔逻辑架构：三维排除、| 分支、引号精确匹配）
 abstract final class BiliFilterEngine {
-  /// 提取用于发送给 B 站 API 的搜索词
-  /// 剥离 - 负向排除词，剥离 @ 与 # 前缀脱壳发送以获取最大候选池，统一转换为简体中文
-  static String cleanKeyword(String keyword) {
-    final rawList = keyword.trim().split(RegExp(r'\s+'));
-    final searchTerms = <String>[];
-    for (final k in rawList) {
-      if (k.startsWith('-')) {
-        continue; // 排除词不发给接口
-      } else if (k.startsWith('@') || k.startsWith('#')) {
-        if (k.length > 1) searchTerms.add(k.substring(1)); // 脱壳发送
-      } else if (k.isNotEmpty) {
-        searchTerms.add(k);
-      }
-    }
-    final result = ChineseConverter.toSimplified(searchTerms.join(' '));
-    return result.isEmpty ? ChineseConverter.toSimplified(keyword) : result;
+  /// 通用文本清洗：繁简归一化、HTML实体反转义与全角标点标准化
+  static String cleanText(String str) {
+    if (str.isEmpty) return '';
+    final simplified = ChineseConverter.toSimplified(str);
+    return simplified
+        .replaceAll(RegExp(r"&#x27;|&#39;|&apos;"), "'")
+        .replaceAll(RegExp(r'&quot;'), '"')
+        .replaceAll(RegExp(r'&amp;'), '&')
+        .replaceAll(RegExp(r'&lt;'), '<')
+        .replaceAll(RegExp(r'&gt;'), '>')
+        .replaceAll(RegExp(r"[\u2018\u2019\u201A\u201B\uFF07`]"), "'")
+        .replaceAll(RegExp(r'[\u201C\u201D\uFF02]'), '"')
+        .replaceAll('\uFF5C', '|')
+        .replaceAll('\uFF03', '#')
+        .replaceAll('\uFF20', '@')
+        .replaceAll('\uFF0D', '-')
+        .trim()
+        .toLowerCase();
   }
 
-  /// 搜索视频列表的二级精确过滤
-  /// 支持黑名单UP主过滤、排除词一票否决、多普通词 AND 匹配、#Tag过滤、@UP过滤、实体ID去重
+  /// 顶层按 | 切分分支
+  static List<String> splitByTopLevelPipe(String str) {
+    final branches = <String>[];
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < str.length; i++) {
+      final char = str[i];
+      if (char == '|') {
+        final segment = buffer.toString().trim();
+        if (segment.isNotEmpty) branches.add(segment);
+        buffer.clear();
+      } else {
+        buffer.write(char);
+      }
+    }
+    final rest = buffer.toString().trim();
+    if (rest.isNotEmpty) branches.add(rest);
+    return branches;
+  }
+
+  /// 带引号容错的分支词法切词
+  static List<String> tokenizeBranch(String branchStr) {
+    final tokens = <String>[];
+    final buffer = StringBuffer();
+    bool inQuote = false;
+    String quoteChar = '';
+
+    for (int i = 0; i < branchStr.length; i++) {
+      final char = branchStr[i];
+      if (inQuote) {
+        // 引号容错：若未闭合且遇空白后紧跟新操作符（@、#、-），自动截断当前未闭合 token
+        if (RegExp(r'\s').hasMatch(char)) {
+          final rest = branchStr.substring(i).trim();
+          if (RegExp(r'^[-#@]').hasMatch(rest)) {
+            if (buffer.isNotEmpty) {
+              tokens.add(buffer.toString());
+              buffer.clear();
+            }
+            inQuote = false;
+            quoteChar = '';
+            continue;
+          }
+        }
+        buffer.write(char);
+        if (char == quoteChar) inQuote = false;
+      } else {
+        if (char == '"' || char == "'") {
+          inQuote = true;
+          quoteChar = char;
+          buffer.write(char);
+        } else if (RegExp(r'\s').hasMatch(char)) {
+          if (buffer.isNotEmpty) {
+            tokens.add(buffer.toString());
+            buffer.clear();
+          }
+        } else {
+          buffer.write(char);
+        }
+      }
+    }
+    if (buffer.isNotEmpty) tokens.add(buffer.toString());
+    return tokens;
+  }
+
+  /// 单个 Token 解析：识别负向排除（-）、作用目标（#Tag / @UP / 标题）与引号精确度
+  static FilterToken? parseToken(String rawToken) {
+    String t = rawToken.trim();
+    if (t.isEmpty) return null;
+
+    bool isNeg = false;
+    if (t.startsWith('-')) {
+      isNeg = true;
+      t = t.substring(1);
+    }
+
+    FilterTarget target = FilterTarget.title;
+    if (t.startsWith('#')) {
+      target = FilterTarget.tag;
+      t = t.substring(1);
+    } else if (t.startsWith('@')) {
+      target = FilterTarget.author;
+      t = t.substring(1);
+    }
+
+    bool isExact = false;
+    String val = t;
+    if (val.startsWith('"') ||
+        val.startsWith("'") ||
+        val.endsWith('"') ||
+        val.endsWith("'")) {
+      isExact = true;
+      val = val.replaceAll(RegExp(r"""^["']+|["']+$"""), '');
+    }
+
+    final cleanVal = cleanText(val);
+    if (cleanVal.isEmpty) return null;
+
+    return FilterToken(
+      isNeg: isNeg,
+      target: target,
+      isExact: isExact,
+      val: cleanVal,
+    );
+  }
+
+  /// 结构化解析检索式为布尔查询对象
+  static SearchFilterQuery parseSearchQuery(String keyword) {
+    final cleaned = cleanText(keyword);
+    if (cleaned.isEmpty) {
+      return const SearchFilterQuery(
+        exclusions: [],
+        branches: [],
+        hasRules: false,
+      );
+    }
+
+    final branchStrings = splitByTopLevelPipe(cleaned);
+    final exclusions = <FilterToken>[];
+    final branches = <List<FilterToken>>[];
+
+    for (final bStr in branchStrings) {
+      final rawTokens = tokenizeBranch(bStr);
+      final posTokens = <FilterToken>[];
+
+      for (final rt in rawTokens) {
+        final parsed = parseToken(rt);
+        if (parsed == null) continue;
+        if (parsed.isNeg) {
+          exclusions.add(parsed);
+        } else {
+          posTokens.add(parsed);
+        }
+      }
+      if (posTokens.isNotEmpty) {
+        branches.add(posTokens);
+      }
+    }
+
+    return SearchFilterQuery(
+      exclusions: exclusions,
+      branches: branches,
+      hasRules: exclusions.isNotEmpty || branches.isNotEmpty,
+    );
+  }
+
+  /// 提取用于发送给 B 站 API 的搜索词（智能脱壳与负向规则剥离）
+  static String cleanKeyword(String keyword) {
+    if (keyword.trim().isEmpty) return '';
+    final query = parseSearchQuery(keyword);
+    if (!query.hasRules) {
+      return ChineseConverter.toSimplified(keyword.trim());
+    }
+
+    final positiveTerms = <String>[];
+    for (final branch in query.branches) {
+      for (final cond in branch) {
+        if (cond.val.isNotEmpty) {
+          positiveTerms.add(cond.val);
+        }
+      }
+    }
+
+    // 剔除重复词，保持检索请求精简
+    final uniqueTerms = positiveTerms.toSet().toList();
+    final result = uniqueTerms.join(' ');
+    return result.isEmpty
+        ? ChineseConverter.toSimplified(
+            keyword.replaceAll(RegExp(r'[-#@|]'), ' ').trim())
+        : result;
+  }
+
+  /// 搜索视频列表的二级精确过滤（2.2 布尔引擎：NOT 优先 -> OR 分支 -> AND 分支内全匹配）
   static List<SearchVideoItemModel> filterSearchVideos(
     List<SearchVideoItemModel> list, {
     required String keyword,
     bool titleMatchOnly = true,
     Set<String>? seenVideoIds,
   }) {
-    final rawKeywords = ChineseConverter.toSimplified(keyword.trim().toLowerCase())
-        .split(RegExp(r'\s+'));
-    final includeKeywords = <String>[];
-    final excludeKeywords = <String>[];
-    final tagKeywords = <String>[];
-    final upKeywords = <String>[];
-
-    for (final k in rawKeywords) {
-      if (k.startsWith('-') && k.length > 1) {
-        excludeKeywords.add(k.substring(1));
-      } else if (k.startsWith('#') && k.length > 1) {
-        tagKeywords.add(k.substring(1));
-      } else if (k.startsWith('@') && k.length > 1) {
-        upKeywords.add(k.substring(1));
-      } else if (k.isNotEmpty) {
-        includeKeywords.add(k);
-      }
-    }
+    final query = parseSearchQuery(keyword);
 
     final filteredList = list.where((item) {
       // 0. 黑名单 UP 主一票否决
@@ -60,39 +246,76 @@ abstract final class BiliFilterEngine {
         return false;
       }
 
-      final videoTitle =
-          ChineseConverter.toSimplified((item.title ?? '').toLowerCase());
-      final videoTags =
-          ChineseConverter.toSimplified((item.tag ?? '').toLowerCase());
-      final videoAuthor =
-          ChineseConverter.toSimplified((item.owner?.name ?? '').toLowerCase());
+      // 规则存在时执行安检过滤
+      if (query.hasRules) {
+        final videoTitle = cleanText(item.title ?? '');
+        final videoAuthor = cleanText(item.owner?.name ?? '');
+        final rawTags = cleanText(item.tag ?? '');
+        final tagList = rawTags
+            .split(RegExp(r'[,，、\s]+'))
+            .map((t) => t.trim())
+            .where((t) => t.isNotEmpty)
+            .toList();
+        final tagSet = tagList.toSet();
 
-      // 1. 负向排除词一票否决 (-)
-      if (excludeKeywords.isNotEmpty &&
-          excludeKeywords.any((k) => videoTitle.contains(k))) {
-        return false;
+        // 1. 全局排除检查（NOT）：只要命中任一排除条件（标题/UP/Tag），一票否决
+        for (final ex in query.exclusions) {
+          switch (ex.target) {
+            case FilterTarget.title:
+              if (videoTitle.contains(ex.val)) return false;
+            case FilterTarget.author:
+              if (ex.isExact
+                  ? (videoAuthor == ex.val)
+                  : videoAuthor.contains(ex.val)) {
+                return false;
+              }
+            case FilterTarget.tag:
+              if (ex.isExact
+                  ? tagSet.contains(ex.val)
+                  : (tagList.any((t) => t.contains(ex.val)) ||
+                      rawTags.contains(ex.val))) {
+                return false;
+              }
+          }
+        }
+
+        // 2. 如果只有排除条件没有正向分支条件，排除通过即保留
+        if (query.branches.isNotEmpty) {
+          // 3. 多分支判定（OR）：满足任意一个分支即可放行
+          final anyBranchMatch = query.branches.any((branch) {
+            // (1) 标题条件全满足 (AND)
+            if (titleMatchOnly) {
+              final titleConds =
+                  branch.where((c) => c.target == FilterTarget.title);
+              final titleMatch = titleConds
+                  .every((c) => videoTitle.contains(c.val));
+              if (!titleMatch) return false;
+            }
+
+            // (2) 标签条件全满足 (AND)
+            final tagConds =
+                branch.where((c) => c.target == FilterTarget.tag);
+            final tagMatch = tagConds.every((c) => c.isExact
+                ? tagSet.contains(c.val)
+                : (tagList.any((t) => t.contains(c.val)) ||
+                    rawTags.contains(c.val)));
+            if (!tagMatch) return false;
+
+            // (3) 作者条件宽松匹配 (OR)：同一分支内满足任一指定 UP 主即可
+            final authorConds =
+                branch.where((c) => c.target == FilterTarget.author);
+            final authorMatch = authorConds.isEmpty ||
+                authorConds.any((c) => c.isExact
+                    ? videoAuthor == c.val
+                    : videoAuthor.contains(c.val));
+            return authorMatch;
+          });
+
+          if (!anyBranchMatch) return false;
+        }
       }
 
-      // 2. 正向普通词全匹配 (AND)
-      if (titleMatchOnly &&
-          includeKeywords.isNotEmpty &&
-          !includeKeywords.every((k) => videoTitle.contains(k))) {
-        return false;
-      }
-
-      // 3. Tag 标签过滤 (#)
-      if (tagKeywords.isNotEmpty &&
-          !tagKeywords.every((k) => videoTags.contains(k))) {
-        return false;
-      }
-
-      // 4. UP 主作者过滤 (@)
-      if (upKeywords.isNotEmpty &&
-          !upKeywords.any((k) => videoAuthor.contains(k))) {
-        return false;
-      }
-
-      // 5. 实体去重
+      // 4. 实体去重
       if (seenVideoIds != null) {
         final idKey = (item.bvid != null && item.bvid!.isNotEmpty)
             ? item.bvid
