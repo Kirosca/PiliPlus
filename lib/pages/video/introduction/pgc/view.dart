@@ -11,10 +11,13 @@ import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/stat.dart';
+import 'package:PiliPlus/models_new/video/video_detail/episode.dart';
+import 'package:PiliPlus/models_new/video/video_tag/data.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/pgc/controller.dart';
-import 'package:PiliPlus/pages/video/introduction/pgc/widgets/pgc_panel.dart';
+import 'package:PiliPlus/pages/video/introduction/pgc/widgets/episode.dart';
 import 'package:PiliPlus/pages/video/introduction/pgc/widgets/season.dart';
+import 'package:PiliPlus/pages/video/introduction/pgc/widgets/section.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/widgets/action_item.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
@@ -25,8 +28,9 @@ import 'package:material_ui/material_ui.dart';
 
 class PgcIntroPage extends StatefulWidget {
   final String heroTag;
-  final Function showEpisodes;
-  final Function showIntroDetail;
+  final ShowEpisodes showEpisodes;
+  final Function(PgcInfoModel videoDetail, List<VideoTagItem>? videoTags)
+  showIntroDetail;
   final double maxWidth;
   final bool isPortrait;
 
@@ -55,7 +59,7 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
       PgcIntroController.new,
       tag: widget.heroTag,
     );
-    videoDetailCtr = Get.find<VideoDetailController>(tag: widget.heroTag);
+    videoDetailCtr = introController.videoDetailCtr;
   }
 
   @override
@@ -90,7 +94,6 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
               Padding(
                 padding: const .only(top: 5),
                 child: SeasonPanel(
-                  seasons: item.seasons!,
                   pgcController: introController,
                   onSeasonChanged: () {
                     if (mounted) setState(() {});
@@ -99,15 +102,18 @@ class _PgcIntroPageState extends State<PgcIntroPage> {
               ),
             // 番剧分集
             if (item.hasEpisodes)
-              PgcPanel(
-                heroTag: widget.heroTag,
-                pages: item.episodes!,
-                cid: videoDetailCtr.cid.value,
-                onChangeEpisode: introController.onChangeEpisode,
+              EpisodePanel(
+                pgcController: introController,
                 showEpisodes: widget.showEpisodes,
-                newEp: item.newEp,
+                onChangeEpisode: introController.onChangeEpisode,
               ),
           ],
+          if (item.hasSections)
+            SectionPanel(
+              pgcController: introController,
+              showEpisodes: widget.showEpisodes,
+              onChangeEpisode: introController.onChangeEpisode,
+            ),
         ],
       ),
     );

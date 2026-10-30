@@ -178,9 +178,6 @@ class VideoDetailController extends GetxController
   ScrollController get effectiveIntroScrollCtr =>
       introScrollCtr ??= ScrollController();
 
-  int? seasonCid;
-  late final RxInt seasonIndex = 0.obs;
-
   PlayerStatus? playerStatus;
 
   late final scrollKey = GlobalKey<ExtendedNestedScrollViewState>();
@@ -383,8 +380,6 @@ class VideoDetailController extends GetxController
       if (!isLoginVideo) {
         _actualVideoType = VideoType.ugc;
       }
-    } else if (args['pgcApi'] == true) {
-      _actualVideoType = VideoType.pgc;
     }
 
     bvid = args['bvid'];
@@ -501,9 +496,7 @@ class VideoDetailController extends GetxController
                 (sourceType == SourceType.fav && args['isOwner'] == true)
             ? (item, index) async {
                 if (sourceType == SourceType.watchLater) {
-                  final res = await UserHttp.toViewDel(
-                    aids: item.aid.toString(),
-                  );
+                  final res = await UserHttp.toViewDel(aids: item.aid!);
                   if (res.isSuccess) {
                     mediaList.removeAt(index);
                   }
@@ -1471,9 +1464,8 @@ class VideoDetailController extends GetxController
           .followedBy(downloadService.waitDownloadQueue)
           .map((e) => e.cid)
           .toSet();
-      final index = episodes.indexWhere(
-        (e) => e.cid == (seasonCid ?? cid.value),
-      );
+      final targetCid = isUgc ? ugcIntroCtr.seasonCid ?? cid.value : cid.value;
+      final index = episodes.indexWhere((e) => e.cid == targetCid);
 
       showModalBottomSheet(
         context: context,
