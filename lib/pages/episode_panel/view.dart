@@ -14,6 +14,7 @@ import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/episode_panel_type.dart';
+import 'package:PiliPlus/models/common/pgc_episode_type.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/episode.dart' as pgc;
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
 import 'package:PiliPlus/models_new/video/video_detail/data.dart';
@@ -31,9 +32,9 @@ import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/scroll_offset_helper.dart';
 import 'package:collection/collection.dart';
 import 'package:easy_debounce/easy_debounce.dart';
-import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -46,11 +47,13 @@ class EpisodePanel extends CommonSlidePage {
     super.enableSlide,
     this.onReverse,
     required this.type,
+    this.episodeType,
     required this.isSidePanel,
     required this.introController,
   });
 
   final EpisodeType type;
+  final PgcEpisodeType? episodeType;
   final bool isSidePanel;
   final VoidCallback? onReverse;
   final CommonIntroController introController;
@@ -69,12 +72,18 @@ class _EpisodePanelState extends State<EpisodePanel>
   // ugc
   late final bool _isUgc;
   TabController? _tabController;
-  late final List<SectionItem> _sections;
-  late final VideoDetailData _videoDetail;
+  late List<SectionItem> _sections;
+  late VideoDetailData _videoDetail;
+  PgcEpisodeType get _episodeType =>
+      widget.episodeType ?? _pgcController.episodeType;
+  List<ugc.BaseEpisodeItem> get _pgcEpisodes =>
+      _isSidePanel || _episodeType == .episode
+      ? _pgcItem.episodes!
+      : _pgcItem.sections![_pgcController.sectionIndex].episodes!;
   late final _ugcController = _introController as UgcIntroController;
 
   // pgc
-  late final PgcInfoModel _pgcItem;
+  late PgcInfoModel _pgcItem;
   late final _pgcController = _introController as PgcIntroController;
 
   // fav
@@ -94,40 +103,55 @@ class _EpisodePanelState extends State<EpisodePanel>
   late final int Function() _itemIndex;
   late List<ugc.BaseEpisodeItem> _episodes;
 
-  ScrollController? _scrollController;
+  final _scrollController = ScrollController();
   late final Map<int, int> _posMap = {};
   void setPosIndex(int tabIndex) {
-    _posMap[tabIndex] ??= _scrollController!.positions.length;
+    _posMap[tabIndex] ??= _scrollController.positions.length;
   }
 
   void _addUgcListener() {
-    if (_isSidePanel) return;
     _ugcController.indexNotifier.addListener(_refresh);
   }
 
   void _removeUgcListener() {
-    if (_isSidePanel) return;
     _ugcController.indexNotifier.removeListener(_refresh);
   }
 
   void _refresh([_]) {
+    if (!_isUgc && _isSidePanel && _pgcController.episodeType != .episode) {
+      return;
+    }
+
     if (!mounted) return;
+    final tabIndexChanged = _syncTab(_tabIndex(), syncEpisodes: true);
     setState(() {});
-    WidgetsBinding.instance.addPostFrameCallback(_jumpToCurrIfNeeded);
+    _jumpToCurrIfNeeded(tabIndexChanged);
   }
 
-  bool _syncTab(int tabIndex) {
-    final tabIndexChanged = _lastTabIndex != tabIndex;
-    if (tabIndexChanged) {
-      _episodes = _sections[tabIndex].episodes!;
-      _lastTabIndex = tabIndex;
+  bool _syncTab(int tabIndex, {required bool syncEpisodes}) {
+    var tabIndexChanged = _lastTabIndex != tabIndex;
+    if (syncEpisodes) {
+      switch (_type) {
+        case .part:
+          _videoDetail = _ugcController.videoDetail.rawValue;
+          _episodes = _videoDetail.pages!;
+        case .season:
+          _videoDetail = _ugcController.videoDetail.rawValue;
+          _sections = _videoDetail.ugcSeason!.sections!;
+          _episodes = _sections[tabIndex].episodes!;
+        case .pgc:
+          tabIndexChanged = _lastTabIndex != _pgcController.seasonIndex;
+          _pgcItem = _pgcController.pgcItem;
+          _episodes = _pgcEpisodes;
+      }
     }
+    _lastTabIndex = tabIndex;
     return tabIndexChanged;
   }
 
-  void _jumpToCurrIfNeeded([_]) {
+  void _jumpToCurrIfNeeded(bool tabIndexChanged) {
     final itemIndex = _itemIndex();
-    if (_syncTab(_tabIndex()) || _lastItemIndex != itemIndex) {
+    if (tabIndexChanged || _lastItemIndex != itemIndex) {
       _jumpToCurrent();
       _lastItemIndex = itemIndex;
     }
@@ -146,24 +170,6 @@ class _EpisodePanelState extends State<EpisodePanel>
 
   void _onCidChanged([_]) {
     WidgetsBinding.instance.addPostFrameCallback(_refresh);
-  }
-
-  @override
-  void didUpdateWidget(EpisodePanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_isUgc) {
-      WidgetsBinding.instance.addPostFrameCallback(_jumpToCurrIfNeeded);
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final scrollController = PrimaryScrollController.of(context);
-    if (_scrollController != scrollController) {
-      _scrollController = scrollController;
-      _posMap.clear();
-    }
   }
 
   @override
@@ -223,9 +229,13 @@ class _EpisodePanelState extends State<EpisodePanel>
         _isUgc = false;
         _isReversed = [false];
         _tabIndex = () => 0;
-        _itemIndex = () => _pgcController.episodeIndex;
+        _itemIndex = _isSidePanel
+            ? () => _pgcController.episodeIndex
+            : () => _episodeType == .episode
+                  ? _pgcController.episodeIndex
+                  : _pgcController.pvIndex;
         _pgcItem = _pgcController.pgcItem;
-        _episodes = _pgcItem.episodes!;
+        _episodes = _pgcEpisodes;
         _addPgcListener();
     }
 
@@ -233,58 +243,62 @@ class _EpisodePanelState extends State<EpisodePanel>
     _lastItemIndex = _itemIndex();
     if (_lastItemIndex > 0) {
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _jumpToPos(offset: _calcItemOffset(_lastItemIndex)),
+        (_) => _jumpToIndex(index: _lastItemIndex),
       );
     }
   }
 
-  void _jumpToTop() => _jumpToPos(top: true);
+  void _jumpToTop() => _jumpToIndex(top: true);
 
-  void _jumpToBottom() => _jumpToPos(top: false);
+  void _jumpToBottom() => _jumpToIndex(top: false);
 
   Future<void> _jumpToCurrent() async {
-    final tabIndex = _tabIndex();
     if (_tabController != null) {
+      final tabIndex = _tabIndex();
       if (_tabController!.index != tabIndex) {
         _tabController!.animateTo(tabIndex);
         await Future.pause(const Duration(milliseconds: 225));
         if (!mounted) return;
       }
     }
-    _jumpToPos(offset: _calcItemOffset(_itemIndex()));
+    _jumpToIndex(index: _itemIndex());
   }
 
-  void _jumpToPos({double? offset, bool? top}) {
-    final scrollController = _scrollController;
-    if (!scrollController!.hasClients) {
+  void _jumpToIndex({int? index, bool? top}) {
+    if (!_scrollController.hasClients) {
       if (kDebugMode) assert(false);
       return;
     }
-    final tabIndex = _tabController?.index ?? 0;
-    final posIndex = _posMap[tabIndex]!;
-    offset ??= (top == true) ^ _isReversed[tabIndex] ? 0 : null;
-    if (scrollController is ExtendedNestedScrollController) {
-      final position = scrollController.nestedPositions.elementAt(posIndex);
-      position.localJumpTo(offset ?? position.maxScrollExtent);
+
+    int itemIndex;
+    final int tabIndex;
+    final List<ugc.BaseEpisodeItem> episodes;
+    if (_tabController != null) {
+      tabIndex = _tabController!.index;
+      episodes = _sections[tabIndex].episodes!;
     } else {
-      final position = scrollController.positions.elementAt(posIndex);
-      position.jumpTo(offset ?? position.maxScrollExtent);
+      tabIndex = 0;
+      episodes = _episodes;
     }
-  }
+    final isReversed = _isReversed[tabIndex];
+    itemIndex = index ?? (top! ^ isReversed ? 0 : episodes.length - 1);
 
-  double _calcItemHeight(ugc.BaseEpisodeItem episode) {
-    if (episode is ugc.EpisodeItem && episode.pages!.length > 1) {
-      return 167; // 110 + 2 + 10 + 45
-    }
-    return 112;
-  }
+    final (double height, double offset, double remain) = calcItemOffset(
+      index: itemIndex,
+      episodes: episodes,
+      isReversed: isReversed,
+    );
 
-  double _calcItemOffset(int index) {
-    double offset = 0;
-    for (var i = 0; i < index; i++) {
-      offset += _calcItemHeight(_episodes[i]);
-    }
-    return offset + 7;
+    final posIndex = _posMap[tabIndex]!;
+    final position = _scrollController.positions.elementAt(posIndex);
+    final adjustOffset = adjustScrollOffset(
+      extent: height,
+      offset: offset,
+      remain: remain,
+      viewportDimension: position.viewportDimension,
+      isReversed: isReversed,
+    );
+    position.jumpTo(adjustOffset);
   }
 
   @override
@@ -294,6 +308,7 @@ class _EpisodePanelState extends State<EpisodePanel>
       ..dispose();
     _tabController = null;
     _removeListener();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -303,6 +318,17 @@ class _EpisodePanelState extends State<EpisodePanel>
     } else {
       _removePgcListener();
     }
+  }
+
+  bool _popIfNeeded() {
+    if (_isSidePanel) return false;
+    _pop();
+    return true;
+  }
+
+  void _pop() {
+    _removeListener();
+    Get.back();
   }
 
   @override
@@ -369,7 +395,7 @@ class _EpisodePanelState extends State<EpisodePanel>
                 padding: const .symmetric(horizontal: 12, vertical: 5), // 10
                 child: PagePanel(
                   // 45
-                  onBack: _isSidePanel ? null : Get.back,
+                  onBack: _isSidePanel ? null : _pop,
                   parts: isCurrItem ? null : episode.pages,
                   cover: episode.arc?.pic,
                   bvid: episode.bvid ?? IdUtils.av2bv(episode.aid!),
@@ -381,11 +407,11 @@ class _EpisodePanelState extends State<EpisodePanel>
         }
         return episodeItem;
       },
-      itemExtentBuilder: (index, _) => _calcItemHeight(episodes[index]),
+      itemExtentBuilder: (index, _) => calcItemHeight(episodes[index]),
     );
 
     child = CustomScrollView(
-      primary: true,
+      controller: _scrollController,
       reverse: _isReversed[tabIndex],
       key: ValueKey(_scrollController.hashCode),
       physics: const AlwaysScrollableScrollPhysics(),
@@ -418,11 +444,8 @@ class _EpisodePanelState extends State<EpisodePanel>
     ugc.BaseEpisodeItem episode,
     String title,
   ) {
-    if (!_isSidePanel) {
-      _removeListener();
-      Get.back();
-    } else {
-      _syncTab(tabIndex);
+    if (!_popIfNeeded()) {
+      _syncTab(tabIndex, syncEpisodes: false);
       _lastItemIndex = index;
     }
 
@@ -434,7 +457,10 @@ class _EpisodePanelState extends State<EpisodePanel>
     if (_isUgc) {
       _ugcController.onChangeEpisode(episode);
     } else {
-      _pgcController.onChangeEpisode(episode, episodeType: .episode);
+      _pgcController.onChangeEpisode(
+        episode,
+        episodeType: _isSidePanel ? .episode : _episodeType,
+      );
     }
   }
 
@@ -688,7 +714,7 @@ class _EpisodePanelState extends State<EpisodePanel>
       icon: isReversed
           ? const Icon(MdiIcons.sortDescending)
           : const Icon(MdiIcons.sortAscending),
-      onPressed: () => widget.onReverse?.call(),
+      onPressed: () => {_popIfNeeded(), widget.onReverse!()},
     );
   });
 
