@@ -17,7 +17,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 # update when release
-version: 2.1.6+1
+version: 2.2.0+1
 
 environment:
   sdk: ">=3.13.0"
@@ -76,7 +76,13 @@ dependencies:
   device_info_plus: ^13.1.0
   dio: ^5.9.1
   dio_http2_adapter: ^2.7.1
-  dlna_dart: ^0.1.0
+  # dlna_dart: ^0.1.0
+  # TOOD:
+  # https://github.com/bggRGjQaUbCoE/PiliPlus/issues/2680#issuecomment-6597938908
+  dlna_dart:
+    git:
+      url: https://github.com/suconghou/dlna-dart.git
+      ref: master
   dynamic_color: ^2.1.0
   easy_debounce: ^2.0.3
   encrypt: ^5.0.3
@@ -171,11 +177,10 @@ dependencies:
     git:
       url: https://github.com/wgh136/webdav_client.git
       ref: main
+  webview_all_linux: ^1.4.9
+  webview_platform_interface: ^1.4.9
   win32: ^6.3.0
-  window_manager:
-    git:
-      url: https://github.com/leanflutter/window_manager.git
-      ref: main
+  window_manager: ^0.6.0
 
 dependency_overrides:
   flutter_inappwebview_android:
