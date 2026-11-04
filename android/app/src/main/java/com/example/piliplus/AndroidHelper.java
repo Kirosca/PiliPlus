@@ -467,7 +467,6 @@ public final class AndroidHelper {
                 || (Build.DEVICE != null && Build.DEVICE.matches(".+_cheets|cheets_.+"));
     }
 
-    @Keep
     public static final class ToDart {
         public static volatile Runnable onUserLeaveHint;
         public static Runnable onConfigurationChanged;
