@@ -37,9 +37,10 @@ class BiliFeedRule {
 
 class BiliFeedStorage {
   static const List<String> defaultKeywords = [
-    'TED演讲',
-    '余华 #余华',
+    '#"八极拳" -#"ai" -#"二次元" -#业余',
     '@影视飓风',
+    'TED',
+    '斯坦福',
   ];
 
   static List<BiliFeedRule> getRules() {
@@ -62,17 +63,39 @@ class BiliFeedStorage {
         }).toList()
           ..sort((a, b) => a.order.compareTo(b.order));
 
+        bool migrated = false;
+        for (final rule in rules) {
+          if (rule.keyword == '@渗透之c君') {
+            rule.keyword = '@影视飓风';
+            migrated = true;
+          } else if (rule.keyword == '八极拳') {
+            rule.keyword = '#"八极拳" -#"ai" -#"二次元" -#业余';
+            migrated = true;
+          } else if (rule.keyword == 'TED演讲') {
+            rule.keyword = 'TED';
+            migrated = true;
+          }
+        }
+
         const oldDefaults = ['Flutter -测试', '#以撒', '@嘤武罗'];
         const previousDefaults = ['TED演讲', '#余华', '@影视飓风'];
+        const v4Defaults = ['TED演讲', '余华 #余华', '@影视飓风'];
         final currentKeywords = rules.map((r) => r.keyword).toList();
-        if (currentKeywords.length == 3 &&
+        if ((currentKeywords.length == 3 &&
             ((currentKeywords[0] == oldDefaults[0] &&
               currentKeywords[1] == oldDefaults[1] &&
               currentKeywords[2] == oldDefaults[2]) ||
              (currentKeywords[0] == previousDefaults[0] &&
               currentKeywords[1] == previousDefaults[1] &&
-              currentKeywords[2] == previousDefaults[2]))) {
+              currentKeywords[2] == previousDefaults[2]) ||
+             (currentKeywords[0] == v4Defaults[0] &&
+              currentKeywords[1] == v4Defaults[1] &&
+              currentKeywords[2] == v4Defaults[2])))) {
           return _generateDefaultRules();
+        }
+
+        if (migrated) {
+          saveRules(rules);
         }
 
         return rules;
