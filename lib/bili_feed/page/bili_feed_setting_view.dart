@@ -1,3 +1,4 @@
+import 'package:PiliPlus/bili_feed/core/bili_filter_engine.dart';
 import 'package:PiliPlus/bili_feed/model/bili_feed_rule.dart';
 import 'package:PiliPlus/bili_feed/page/bili_feed_controller.dart';
 import 'package:PiliPlus/common/widgets/dialog/export_import.dart';
@@ -16,6 +17,309 @@ class BiliFeedSettingPage extends StatefulWidget {
 }
 
 class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
+
+  Widget _buildRuleExplanation(String text, ColorScheme colorScheme) {
+    final query = BiliFilterEngine.parseSearchQuery(text);
+    if (!query.hasRules && text.trim().isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '支持高级筛选语法：',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                ),
+                children: [
+                  const TextSpan(text: '• '),
+                  TextSpan(
+                    text: '逻辑条件',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const TextSpan(text: '：空格 (且)、| (或)\n• '),
+                  TextSpan(
+                    text: '包含筛选',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const TextSpan(text: '：关键词 (标题)、@UP主、#标签\n• '),
+                  TextSpan(
+                    text: '排除条件',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const TextSpan(text: '：加负号 -，如：-标题、-#标签、-@UP主\n• '),
+                  TextSpan(
+                    text: '精确匹配',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const TextSpan(text: '：加双引号精确匹配，如： "短语"、@"UP主"、#"标签" (排除同样支持，如 -@"UP主")'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    InlineSpan? buildDimensionSpan(
+      String label,
+      FilterTarget target,
+    ) {
+      final branchParts = <String>[];
+      for (final branch in query.branches) {
+        final tokens = branch.where((t) => t.target == target).toList();
+        if (tokens.isEmpty) continue;
+        final tokenStrings = tokens.map((t) {
+          return t.isExact ? '精确「${t.val}」' : '包含「${t.val}」';
+        }).toList();
+        if (tokenStrings.length == 1) {
+          branchParts.add(tokenStrings.first);
+        } else {
+          branchParts.add('(${tokenStrings.join(' 且 ')})');
+        }
+      }
+      final posText = branchParts.join(' 或 ');
+
+      final exclTokens = query.exclusions.where((t) => t.target == target).toList();
+      final negText = exclTokens.map((t) {
+        return t.isExact ? '排除精确「${t.val}」' : '排除「${t.val}」';
+      }).join('、');
+
+      if (posText.isEmpty && negText.isEmpty) {
+        return null;
+      }
+
+      final spans = <InlineSpan>[
+        const TextSpan(text: '• '),
+        TextSpan(
+          text: label,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const TextSpan(text: '：'),
+      ];
+
+      if (posText.isNotEmpty) {
+        spans.add(TextSpan(
+          text: posText,
+          style: TextStyle(color: colorScheme.onSurface),
+        ));
+      }
+
+      if (negText.isNotEmpty) {
+        if (posText.isNotEmpty) {
+          spans.add(TextSpan(
+            text: '；且 ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.error,
+            ),
+          ));
+        }
+        spans.add(TextSpan(
+          text: negText,
+          style: TextStyle(color: colorScheme.error),
+        ));
+      }
+
+      return TextSpan(
+        style: TextStyle(fontSize: 12, height: 1.45, color: colorScheme.onSurface),
+        children: spans,
+      );
+    }
+
+    final lineWidgets = <Widget>[];
+    const dims = [
+      ('标题', FilterTarget.title),
+      ('标签', FilterTarget.tag),
+      ('UP主', FilterTarget.author),
+    ];
+
+    if (query.branches.length > 1) {
+      // 多分支模式：按分支展示，分支内部嵌套 标题 / 标签 / UP主 各维度
+      for (int i = 0; i < query.branches.length; i++) {
+        final branch = query.branches[i];
+        lineWidgets.add(
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 2 : 4),
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: 12, height: 1.45, color: colorScheme.onSurface),
+                children: [
+                  const TextSpan(text: '• '),
+                  TextSpan(
+                    text: i == 0 ? '条件' : '或',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: i == 0 ? colorScheme.onSurfaceVariant : colorScheme.tertiary,
+                    ),
+                  ),
+                  const TextSpan(text: '：'),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        for (final (dimLabel, dimTarget) in dims) {
+          final tokens = branch.where((t) => t.target == dimTarget).toList();
+          if (tokens.isEmpty) continue;
+          final condText = tokens
+              .map((t) => t.isExact ? '精确「${t.val}」' : '包含「${t.val}」')
+              .join(' 且 ');
+          lineWidgets.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 14, top: 1),
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(fontSize: 11.5, height: 1.4, color: colorScheme.onSurface),
+                  children: [
+                    TextSpan(
+                      text: '- $dimLabel：',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    TextSpan(text: condText),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      }
+
+      if (query.exclusions.isNotEmpty) {
+        lineWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: 12, height: 1.45, color: colorScheme.error),
+                children: [
+                  const TextSpan(text: '• '),
+                  TextSpan(
+                    text: '全局排除',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.error,
+                    ),
+                  ),
+                  const TextSpan(text: '：'),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        for (final (dimLabel, dimTarget) in dims) {
+          final tokens = query.exclusions.where((t) => t.target == dimTarget).toList();
+          if (tokens.isEmpty) continue;
+          final exclText = tokens
+              .map((t) => t.isExact ? '排除精确「${t.val}」' : '排除「${t.val}」')
+              .join('、');
+          lineWidgets.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 14, top: 1),
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(fontSize: 11.5, height: 1.4, color: colorScheme.error),
+                  children: [
+                    TextSpan(
+                      text: '- $dimLabel：',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.error,
+                      ),
+                    ),
+                    TextSpan(text: exclText),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      }
+    } else {
+      // 单分支或纯排除模式：按三大维度纵向归类
+      final titleSpan = buildDimensionSpan('标题', FilterTarget.title);
+      if (titleSpan != null) {
+        lineWidgets.add(Padding(padding: const EdgeInsets.only(top: 2), child: Text.rich(titleSpan)));
+      }
+      final tagSpan = buildDimensionSpan('标签', FilterTarget.tag);
+      if (tagSpan != null) {
+        lineWidgets.add(Padding(padding: const EdgeInsets.only(top: 2), child: Text.rich(tagSpan)));
+      }
+      final authorSpan = buildDimensionSpan('UP主', FilterTarget.author);
+      if (authorSpan != null) {
+        lineWidgets.add(Padding(padding: const EdgeInsets.only(top: 2), child: Text.rich(authorSpan)));
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '规则解析：',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (lineWidgets.isNotEmpty)
+            ...lineWidgets
+          else if (text.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '• 规则：任意内容',
+                style: TextStyle(fontSize: 12, color: colorScheme.onSurface),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   List<BiliFeedRule> rules = [];
   bool _hasChanged = false;
 
@@ -58,29 +362,37 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
       builder: (context) {
         return AlertDialog(
           title: Text(existingRule == null ? '添加选推规则' : '编辑选推规则'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: textController,
-                autofocus: true,
-                minLines: 1,
-                maxLines: 5,
-                textInputAction: TextInputAction.done,
-                inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'[\r\n]')),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: textController,
+                    autofocus: true,
+                    minLines: 3,
+                    maxLines: 5,
+                    textInputAction: TextInputAction.done,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(r'[\r\n]')),
+                    ],
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: textController,
+                    builder: (context, value, child) {
+                      return _buildRuleExplanation(value.text, Theme.of(context).colorScheme);
+                    },
+                  ),
                 ],
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                '支持高级筛选语法：空格(必含)、| (或者条件)、-词(三维排除)、@UP主、#标签、"精确短语"',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
+            ),
           ),
           actions: [
             TextButton(

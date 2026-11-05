@@ -84,6 +84,13 @@ abstract final class BiliFilterEngine {
     bool inQuote = false;
     String quoteChar = '';
 
+    void flush() {
+      if (buffer.isNotEmpty) {
+        tokens.add(buffer.toString());
+        buffer.clear();
+      }
+    }
+
     for (int i = 0; i < branchStr.length; i++) {
       final char = branchStr[i];
       if (inQuote) {
@@ -91,33 +98,34 @@ abstract final class BiliFilterEngine {
         if (RegExp(r'\s').hasMatch(char)) {
           final rest = branchStr.substring(i).trim();
           if (RegExp(r'^[-#@]').hasMatch(rest)) {
-            if (buffer.isNotEmpty) {
-              tokens.add(buffer.toString());
-              buffer.clear();
-            }
+            flush();
             inQuote = false;
             quoteChar = '';
             continue;
           }
         }
         buffer.write(char);
-        if (char == quoteChar) inQuote = false;
+        if (char == quoteChar) {
+          inQuote = false;
+          flush();
+        }
       } else {
         if (char == '"' || char == "'") {
+          final current = buffer.toString();
+          if (current.isNotEmpty && !RegExp(r'^-?[@#]?$').hasMatch(current)) {
+            flush();
+          }
           inQuote = true;
           quoteChar = char;
           buffer.write(char);
         } else if (RegExp(r'\s').hasMatch(char)) {
-          if (buffer.isNotEmpty) {
-            tokens.add(buffer.toString());
-            buffer.clear();
-          }
+          flush();
         } else {
           buffer.write(char);
         }
       }
     }
-    if (buffer.isNotEmpty) tokens.add(buffer.toString());
+    flush();
     return tokens;
   }
 
@@ -151,6 +159,9 @@ abstract final class BiliFilterEngine {
     } else {
       val = val.replaceAll(RegExp(r"""^["']+|["']+$"""), '');
     }
+
+    // 清洗残留在词内部的非配对单双引号
+    val = val.replaceAll(RegExp(r"""["']"""), '').trim();
 
     final cleanVal = cleanText(val);
     if (cleanVal.isEmpty) return null;
