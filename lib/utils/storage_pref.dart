@@ -762,7 +762,7 @@ abstract final class Pref {
 
   static bool get dynamicColor =>
       !Platform.isIOS &&
-      _setting.get(SettingBoxKey.dynamicColor, defaultValue: true);
+      _setting.get(SettingBoxKey.dynamicColor, defaultValue: false);
 
   static bool get enableSystemProxy =>
       _setting.get(SettingBoxKey.enableSystemProxy, defaultValue: false);
