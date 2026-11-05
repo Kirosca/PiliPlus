@@ -338,47 +338,6 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Card(
-                elevation: 0,
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline,
-                              size: 18, color: colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            '选推推荐池规则说明',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '1. 【提取阶段】：每次请求以 21 条为目标总量，按启用规则数均分名额，并通过 100ms 异步节流稳定拉取。\n'
-                        '2. 【清洗阶段】：命中规则的视频在进入推荐池前，会自动拦截充电专属、课堂专区以及黑名单 UP 主的稿件。\n'
-                        '3. 【补位阶段】：若某条规则因条件苛刻导致候选不足，剩余名额自动由存量充足的规则顺位补足，确保每次刷新数量饱满。\n'
-                        '4. 【循环阶段】：单条规则翻页到底后自动重置回第 1 页，各规则游标互不干扰、独立持久化存储。\n'
-                        '5. 【去重与呈现】：基于 1500 条历史去重池过滤重复项，最终将所有规则产出的视频打乱交错呈现。\n'
-                        '6. 【配置调整】：点击卡片编辑规则，长按左侧手柄拖拽排序，点击开关即时生效。',
-                        style: TextStyle(fontSize: 12.5, height: 1.45),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           SliverReorderableList(
             itemCount: rules.length,
             onReorder: (oldIndex, newIndex) {
