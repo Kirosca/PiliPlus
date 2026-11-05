@@ -254,6 +254,17 @@ try {
 } catch {
 }
 
+try {
+    $CupertinoUiDir = Get-ChildItem "$PubCacheDir/hosted/pub.dev" -Directory |
+        Where-Object { $_.Name -like "cupertino_ui-*" } |
+        Select-Object -Last 1
+
+    if ($CupertinoUiDir) {
+        Remove-Item -Path $CupertinoUiDir.FullName -Recurse -Force
+    }
+} catch {
+}
+
 flutter pub get
 
 $MaterialUiDir = Get-ChildItem "$PubCacheDir/hosted/pub.dev" -Directory |
@@ -274,6 +285,11 @@ Get-ChildItem -Path "$env:GITHUB_WORKSPACE/lib/scripts/material" -Filter *.patch
 cd $MaterialUiDir.FullName
 
 foreach ($patch in $patches_material) {
+    git apply --reverse --check "$env:GITHUB_WORKSPACE/$patch" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "$patch already applied, skipping"
+        continue
+    }
     git apply "$env:GITHUB_WORKSPACE/$patch"
     if ($LASTEXITCODE -eq 0) {
         Write-Host "$patch applied"
@@ -319,6 +335,11 @@ Get-ChildItem -Path "$env:GITHUB_WORKSPACE/lib/scripts/cupertino" -Filter *.patc
 cd $CupertinoUiDir.FullName
 
 foreach ($patch in $patches_cupertino) {
+    git apply --reverse --check "$env:GITHUB_WORKSPACE/$patch" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "$patch already applied, skipping"
+        continue
+    }
     git apply "$env:GITHUB_WORKSPACE/$patch"
     if ($LASTEXITCODE -eq 0) {
         Write-Host "$patch applied"
