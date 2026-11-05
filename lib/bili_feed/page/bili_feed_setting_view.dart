@@ -64,8 +64,10 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
               TextField(
                 controller: textController,
                 autofocus: true,
+                minLines: 1,
+                maxLines: 5,
+                keyboardType: TextInputType.multiline,
                 decoration: const InputDecoration(
-                  hintText: '例: 猫 | 狗 或 #余华 或 @影视飓风 -#手游',
                   border: OutlineInputBorder(),
                 ),
               ),
