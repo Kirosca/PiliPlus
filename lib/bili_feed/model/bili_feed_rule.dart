@@ -37,7 +37,6 @@ class BiliFeedRule {
 
 class BiliFeedStorage {
   static const List<String> defaultKeywords = [
-    '#"八极拳" -#"ai" -#"二次元" -#业余',
     '@影视飓风',
     'TED',
     '斯坦福',
@@ -64,17 +63,29 @@ class BiliFeedStorage {
           ..sort((a, b) => a.order.compareTo(b.order));
 
         bool migrated = false;
+        final initialLen = rules.length;
+        rules.removeWhere((rule) =>
+            rule.keyword == '八极拳' ||
+            rule.keyword == '#"八极拳" -#"ai" -#"二次元" -#业余');
+        if (rules.length != initialLen) {
+          migrated = true;
+          for (int i = 0; i < rules.length; i++) {
+            rules[i].order = i;
+          }
+        }
+
         for (final rule in rules) {
           if (rule.keyword == '@渗透之c君') {
             rule.keyword = '@影视飓风';
-            migrated = true;
-          } else if (rule.keyword == '八极拳') {
-            rule.keyword = '#"八极拳" -#"ai" -#"二次元" -#业余';
             migrated = true;
           } else if (rule.keyword == 'TED演讲') {
             rule.keyword = 'TED';
             migrated = true;
           }
+        }
+
+        if (rules.isEmpty) {
+          return _generateDefaultRules();
         }
 
         const oldDefaults = ['Flutter -测试', '#以撒', '@嘤武罗'];
