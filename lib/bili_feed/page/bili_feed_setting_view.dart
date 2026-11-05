@@ -3,6 +3,7 @@ import 'package:PiliPlus/bili_feed/page/bili_feed_controller.dart';
 import 'package:PiliPlus/common/widgets/dialog/export_import.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
 import 'package:PiliPlus/utils/utils.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -66,7 +67,10 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
                 autofocus: true,
                 minLines: 1,
                 maxLines: 5,
-                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.done,
+                inputFormatters: [
+                  FilteringTextInputFormatter.deny(RegExp(r'[\r\n]')),
+                ],
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                 ),
@@ -85,7 +89,8 @@ class _BiliFeedSettingPageState extends State<BiliFeedSettingPage> {
             ),
             FilledButton(
               onPressed: () {
-                final text = textController.text.trim();
+                final text =
+                    textController.text.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
                 if (text.isEmpty) {
                   SmartDialog.showToast('规则关键词不能为空');
                   return;
