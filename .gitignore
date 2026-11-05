@@ -75,6 +75,10 @@ app.*.map.json
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
 *.jks
+*.keystore
+*.p12
+*.mobileprovision
+release.keystore
 
 # iOS/XCode related
 **/ios/**/*.mode1v3

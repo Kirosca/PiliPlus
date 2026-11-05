@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
 
       - name: 构建 Java 环境
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "zulu"
           java-version: "17"
