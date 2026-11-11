@@ -383,6 +383,7 @@ class AudioController extends GetxController
     );
     await player!.open(
       Media(url, start: _start, extras: audioFilterExtras(volume)),
+      play: false,
     );
     await onPlay();
     _start = null;
@@ -821,8 +822,7 @@ class AudioController extends GetxController
   int? get timeLength => player?.state.duration.inMilliseconds ?? 0;
 
   @override
-  Future<void>? seekTo(Duration duration, {required bool isSeek}) =>
-      onSeek(duration);
+  Future<void>? seekTo(Duration duration) => onSeek(duration);
 
   @override
   bool get autoPlay => true;

@@ -150,6 +150,7 @@ abstract final class SettingBoxKey {
       enableTapDm = 'enableTapDm',
       setSystemBrightness = 'setSystemBrightness',
       downloadPath = 'downloadPath',
+      cachePlayInfo = 'cachePlayInfo',
       imageSavePath = 'imageSavePath',
       followOrderType = 'followOrderType',
       enableImgMenu = 'enableImgMenu',
@@ -258,7 +259,8 @@ abstract final class SettingBoxKey {
       saveReply = 'saveReply',
       curatedFeedRules = 'curatedFeedRules',
       curatedFeedLastData = 'curatedFeedLastData',
-      appFont = 'appFont';
+      appFont = 'appFont',
+      foldDepth = 'foldDepth';
 }
 
 abstract final class LocalCacheKey {

@@ -74,6 +74,16 @@ class DetailItem extends StatelessWidget {
     ),
   );
 
+  Future<void> _onUpdate(Future<bool> Function() onUpdate) async {
+    Get.back();
+    final res = await onUpdate();
+    if (res) {
+      SmartDialog.showToast('更新成功');
+    } else {
+      SmartDialog.showToast('更新失败');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -97,29 +107,23 @@ class DetailItem extends StatelessWidget {
                       onConfirm: onDelete,
                     );
                   },
-                  child: const Text('删除', style: TextStyle(fontSize: 14)),
+                  child: const Text('删除'),
                 ),
                 DialogOption(
                   onPressed: () {
                     Get.back();
                     BiliExportService.exportSingle(entry);
                   },
-                  child: const Text('导出为 MP4 文件', style: TextStyle(fontSize: 14)),
+                  child: const Text('导出为 MP4 文件'),
                 ),
                 DialogOption(
-                  onPressed: () async {
-                    Get.back();
-                    final res = await downloadService.downloadDanmaku(
+                  onPressed: () => _onUpdate(
+                    () => downloadService.downloadDanmaku(
                       entry: entry,
                       isUpdate: true,
-                    );
-                    if (res) {
-                      SmartDialog.showToast('更新成功');
-                    } else {
-                      SmartDialog.showToast('更新失败');
-                    }
-                  },
-                  child: const Text('更新弹幕', style: TextStyle(fontSize: 14)),
+                    ),
+                  ),
+                  child: const Text('更新弹幕'),
                 ),
                 if (entry.segments != null)
                   DialogOption(
@@ -129,19 +133,43 @@ class DetailItem extends StatelessWidget {
                     },
                     child: const Text('空降片段'),
                   ),
-                if (entry.isCompleted)
+                if (entry.isCompleted) ...[
+                  if (entry.ep != null)
+                    DialogOption(
+                      onPressed: () => _onUpdate(
+                        () => downloadService.updatePgcSegmentsAndVolume(entry),
+                      ),
+                      child: const Text('更新空降、音量均衡'),
+                    )
+                  else ...[
+                    DialogOption(
+                      onPressed: () => _onUpdate(
+                        () => downloadService.updateUgcSeasonInfo(
+                          entry,
+                          refresh: true,
+                        ),
+                      ),
+                      child: const Text('更新合集信息'),
+                    ),
+                    DialogOption(
+                      onPressed: () => _onUpdate(
+                        () => downloadService.updateUgcSegments(entry),
+                      ),
+                      child: const Text('更新空降片段'),
+                    ),
+                    DialogOption(
+                      onPressed: () => _onUpdate(
+                        () => downloadService.updateUgcVolume(entry),
+                      ),
+                      child: const Text('更新音量均衡'),
+                    ),
+                  ],
                   DialogOption(
-                    onPressed: () async {
-                      Get.back();
-                      final res = await downloadService.updateSegments(entry);
-                      if (res) {
-                        SmartDialog.showToast('更新成功');
-                      } else {
-                        SmartDialog.showToast('更新失败');
-                      }
-                    },
-                    child: const Text('更新空降片段'),
+                    onPressed: () =>
+                        _onUpdate(() => downloadService.updatePlayInfo(entry)),
+                    child: const Text('更新字幕、分段信息'),
                   ),
+                ],
               ],
             ),
           )
@@ -190,7 +218,7 @@ class DetailItem extends StatelessWidget {
                 downloadNext: false,
               );
             } else {
-              downloadService.startDownload(entry);
+              downloadService.queueDownload(entry);
             }
           }
         },

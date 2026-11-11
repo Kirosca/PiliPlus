@@ -147,6 +147,19 @@ abstract final class ReplyGrpc {
           return hasMatch;
         });
       }
+
+      if (response.replies.isEmpty && !response.hasUpTop()) {
+        final offset = response.paginationReply.nextOffset;
+        if (offset.isNotEmpty && !response.cursor.isEnd) {
+          return mainList(
+            type: type,
+            oid: oid,
+            rpid: rpid,
+            mode: mode,
+            offset: offset,
+          );
+        }
+      }
     }
     return res;
   }
@@ -158,6 +171,7 @@ abstract final class ReplyGrpc {
     required int rpid,
     required Mode mode,
     required String? offset,
+    Map<Int64, ReplyInfo>? removed,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.detailList,
@@ -172,7 +186,16 @@ abstract final class ReplyGrpc {
       ),
       DetailListReply.fromBuffer,
     );
-    return res..dataOrNull?.root.replies.removeWhere(needRemoveGrpc);
+    return res
+      ..dataOrNull?.root.replies.removeWhere(
+        removed == null
+            ? needRemoveGrpc
+            : (i) {
+                final flag = needRemoveGrpc(i);
+                if (flag) removed[i.id] = i;
+                return flag;
+              },
+      );
   }
 
   static Future<LoadingState<FoldListResp>> foldList({
